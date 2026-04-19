@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Galton-Brett Simulation Pro</title>
+    <title>Galton-Brett Pro (iPhone Optimized)</title>
     <style>
         :root {
             --bg-gray: #d4d4d4;
@@ -16,8 +16,8 @@
             height: 100%; width: 100%;
             overflow: hidden;
             background-color: #222;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            touch-action: none; /* Verhindert versehentliches Zoomen auf dem iPhone */
+            font-family: -apple-system, system-ui, sans-serif;
+            touch-action: none;
         }
 
         .container {
@@ -91,7 +91,6 @@
             align-items: center;
             gap: 8px;
             font-weight: bold;
-            color: #333;
             font-size: 16px;
         }
 
@@ -102,8 +101,6 @@
             border: 2px solid #888;
             font-size: 18px;
             text-align: center;
-            background: #fff;
-            -webkit-appearance: none; /* Entfernt iPhone-Standard-Styling */
         }
 
         button {
@@ -114,13 +111,6 @@
             cursor: pointer;
             font-weight: bold;
             font-size: 18px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        button:active {
-            transform: translateY(2px);
-            box-shadow: 0 2px 3px rgba(0,0,0,0.2);
         }
     </style>
 </head>
@@ -140,8 +130,7 @@
 
     <div class="footer">
         <div class="input-group">
-            Kugeln:
-            <input type="number" id="ballCount" value="1000" min="1">
+            Kugeln: <input type="number" id="ballCount" value="1000" min="1">
         </div>
         <button onclick="startSimulation()">START</button>
     </div>
@@ -167,8 +156,8 @@
     const rows = 12; 
     const cols = 13;
     const pegRadius = 4;
-    const ballRadius = 6; 
-    const gravity = 0.38;
+    const ballRadius = 5; 
+    const gravity = 0.35;
 
     window.onload = resize;
     window.onresize = resize;
@@ -178,10 +167,8 @@
         canvas.width = wrapper.clientWidth * dpr;
         canvas.height = wrapper.clientHeight * dpr;
         ctx.scale(dpr, dpr);
-        
         canvas.style.width = wrapper.clientWidth + 'px';
         canvas.style.height = wrapper.clientHeight + 'px';
-
         const spacingX = Math.min(wrapper.clientWidth / (cols + 2), 60);
         progressContainer.style.width = (spacingX * cols) + "px";
         initBoard();
@@ -217,18 +204,17 @@
         const chartBaseY = h_area - 20;
         const maxChartHeight = h_area * 0.35;
 
-        // Fächer-Boden
-        ctx.strokeStyle = "#eee";
+        // Fächer-Boden & Trennlinien
+        ctx.strokeStyle = "#ddd";
         ctx.lineWidth = 1;
         ctx.beginPath();
         for(let i = 0; i <= cols; i++) {
             const x = leftEdge + (i * spacingX);
             ctx.moveTo(x, chartBaseY);
-            ctx.lineTo(x, chartBaseY - 10);
+            ctx.lineTo(x, chartBaseY - 15);
         }
         ctx.stroke();
 
-        // Balken zeichnen
         bins.forEach((count, i) => {
             const x = leftEdge + (i * spacingX);
             const h = (count / (totalToSpawn || 1000)) * (maxChartHeight * 4); 
@@ -236,36 +222,32 @@
             ctx.fillRect(x + 2, chartBaseY - h, spacingX - 4, h);
             if (count > 0) {
                 ctx.fillStyle = h > 20 ? "#fff" : "#333";
-                ctx.font = "bold 12px Arial";
+                ctx.font = "bold 11px Arial";
                 ctx.textAlign = "center";
-                const textY = h > 20 ? chartBaseY - h/2 + 5 : chartBaseY - h - 5;
+                const textY = h > 20 ? chartBaseY - h/2 + 4 : chartBaseY - h - 5;
                 ctx.fillText(count, x + spacingX/2, textY);
             }
         });
 
-        // Nägel zeichnen
         pegs.forEach(p => {
             ctx.beginPath(); ctx.arc(p.x, p.y, pegRadius, 0, Math.PI * 2);
             ctx.fillStyle = "#cc0000"; ctx.fill();
             ctx.strokeStyle = "#600"; ctx.lineWidth = 1; ctx.stroke();
         });
 
-        // Glockenkurve
         if (showCurve) {
             ctx.beginPath();
             ctx.strokeStyle = "rgba(255, 0, 0, 0.8)";
             ctx.lineWidth = 5;
             const mu = cols / 2 - 0.5;
             const sigma = Math.sqrt(rows * 0.25);
-            const theoretMax = normalPDF(mu, mu, sigma);
-            const scaleFactor = maxChartHeight / theoretMax;
+            const scaleFactor = maxChartHeight / normalPDF(mu, mu, sigma);
             for (let i = 0; i < cols * 10; i++) {
                 let xIdx = i / 10;
                 let xPos = leftEdge + (xIdx * spacingX) + spacingX/2;
                 let yVal = normalPDF(xIdx, mu, sigma) * scaleFactor;
                 let yPos = chartBaseY - yVal;
-                if (i === 0) ctx.moveTo(xPos, yPos);
-                else ctx.lineTo(xPos, yPos);
+                if (i === 0) ctx.moveTo(xPos, yPos); else ctx.lineTo(xPos, yPos);
             }
             ctx.stroke();
         }
@@ -274,30 +256,31 @@
     class Ball {
         constructor() {
             this.x = wrapper.clientWidth / 2;
-            this.y = 10; 
-            this.vx = 0; 
-            this.vy = 0;
-            this.lastPeg = null; 
-            this.isFinished = false;
+            this.y = 10; this.vx = 0; this.vy = 0;
+            this.lastPeg = null; this.isFinished = false;
         }
 
         update() {
             if (this.isFinished) return;
-            this.vy += gravity; 
-            this.x += this.vx; 
-            this.y += this.vy;
-            this.vx *= 0.95; // Starke Dämpfung für Mobile-Stabilität
+            this.vy += gravity; this.x += this.vx; this.y += this.vy;
+            
+            // AUTOMATISCHE MITTENZENTRIERUNG (Der iPhone-Fix)
+            // Je weiter außen, desto mehr Bremswirkung auf die Seitenbewegung
+            const centerX = wrapper.clientWidth / 2;
+            const distFromCenter = Math.abs(this.x - centerX);
+            const correction = (this.x > centerX ? -1 : 1) * (distFromCenter * 0.001);
+            this.vx += correction; 
+            this.vx *= 0.94; // Erhöhte Reibung
 
             pegs.forEach(p => {
-                const dx = this.x - p.x; 
-                const dy = this.y - p.y;
+                const dx = this.x - p.x; const dy = this.y - p.y;
                 const dist = Math.sqrt(dx*dx + dy*dy);
-                
                 if (dist < ballRadius + pegRadius && this.lastPeg !== p) {
                     this.lastPeg = p;
+                    // Mathematisch saubere 50/50 Entscheidung
                     const dir = Math.random() < 0.5 ? -1 : 1;
-                    this.vy *= -0.1;
-                    this.vx = dir * 2.2;
+                    this.vy *= -0.05; 
+                    this.vx = dir * 2.1; 
                     this.y = p.y - 1;
                 }
             });
@@ -351,8 +334,7 @@
             lastSpawnTime = currentTime;
         }
         activeBalls.forEach((ball, index) => {
-            ball.update();
-            ball.draw();
+            ball.update(); ball.draw();
             if (ball.isFinished) activeBalls.splice(index, 1);
         });
         if (isRunning) requestAnimationFrame(animate);
