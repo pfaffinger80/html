@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zahlen-Generator mit Diagramm</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 15px;
+        }
+        .controls {
+            background: #fff;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        input[type="number"] {
+            padding: 8px;
+            font-size: 16px;
+            width: 80px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-left: auto;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        #number-output {
+            background: #fff;
+            padding: 10px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            min-height: 40px;
+            max-height: 100px; 
+            overflow-y: auto;
+            font-size: 18px;
+            font-family: monospace;
+            word-wrap: break-word;
+            line-height: 1.5;
+            margin-bottom: 15px; 
+        }
+        /* Neues Design für den Fortschrittsbalken */
+        .progress-container {
+            width: 100%;
+            background-color: #e9ecef;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            height: 20px;
+            overflow: hidden;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .progress-bar {
+            height: 100%;
+            background-color: #28a745;
+            width: 0%;
+            transition: width 0.05s linear; 
+        }
+        .chart-container {
+            background: #fff;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .top-numbers-container {
+            background: #fff;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-top: 15px;
+        }
+        .top-numbers-container h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: #444;
+            font-size: 18px;
+        }
+        #topNumbersList {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        #topNumbersList li {
+            background: #e9ecef;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: bold;
+            border-left: 4px solid #36a2eb;
+        }
+        /* Roten Rand für die Top 6 in der Liste */
+        #topNumbersList li.top-highlight {
+            border-left: 4px solid #ff6384; 
+        }
+    </style>
+</head>
+<body>
+
+    <div class="controls">
+        <div class="input-group">
+            <label for="countInput">Wie viele Zahlen insgesamt?</label>
+            <input type="number" id="countInput" value="1500" min="1">
+        </div>
+        
+        <div class="input-group">
+            <label for="maxInput">Zahlen von 1 bis:</label>
+            <input type="number" id="maxInput" value="49" min="2">
+        </div>
+
+        <button id="startBtn">Start</button>
+    </div>
+
+    <div id="number-output"></div>
+
+    <div class="progress-container">
+        <div id="progressBar" class="progress-bar"></div>
+    </div>
+
+    <div class="chart-container">
+        <canvas id="myChart"></canvas>
+    </div>
+
+    <div class="top-numbers-container">
+        <h3>Die 6 häufigsten Zahlen:</h3>
+        <ul id="topNumbersList">
+            </ul>
+    </div>
+
+    <script>
+        const startBtn = document.getElementById('startBtn');
+        const countInput = document.getElementById('countInput');
+        const maxInput = document.getElementById('maxInput');
+        const progressBar = document.getElementById('progressBar');
+        const ctx = document.getElementById('myChart').getContext('2d');
+
+        let myChart;
+        let frequencies = []; 
+        let intervalId;
+        let generatedCount = 0;
+        let targetCount = 0;
+        let currentMaxNumber = 49; 
+
+        function initChart(maxNum) {
+            if (myChart) {
+                myChart.destroy();
+            }
+            
+            const labels = Array.from({length: maxNum}, (_, i) => (i + 1).toString());
+            
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        // Der Titel wird intern noch gebraucht, aber oben versteckt
+                        label: 'Häufigkeit', 
+                        data: frequencies,
+                        backgroundColor: [], // Wird nun dynamisch gefüllt
+                        borderColor: [],     // Wird nun dynamisch gefüllt
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    animation: false,
+                    plugins: {
+                        legend: {
+                            display: false // Versteckt den Text über dem Diagramm
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { stepSize: 1 }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Neue Funktion, die die Top 6 im Diagramm einfärbt
+        function updateChartColors(stats) {
+            const topIndices = new Set();
+            const limit = Math.min(6, stats.length);
+            
+            for (let i = 0; i < limit; i++) {
+                if (stats[i].count > 0) {
+                    topIndices.add(stats[i].index);
+                }
+            }
+
+            const bgColors = [];
+            const borderColors = [];
+
+            for (let i = 0; i < frequencies.length; i++) {
+                if (topIndices.has(i)) {
+                    bgColors.push('rgba(255, 99, 132, 0.8)'); // Rot für Top 6
+                    borderColors.push('rgba(255, 99, 132, 1)');
+                } else {
+                    bgColors.push('rgba(54, 162, 235, 0.7)'); // Blau für den Rest
+                    borderColors.push('rgba(54, 162, 235, 1)');
+                }
+            }
+
+            myChart.data.datasets[0].backgroundColor = bgColors;
+            myChart.data.datasets[0].borderColor = borderColors;
+        }
+
+        function updateTopNumbers() {
+            let stats = [];
+            for (let i = 0; i < frequencies.length; i++) {
+                // Wir speichern den echten Index (i), um ihn später für das Einfärben zu nutzen
+                stats.push({ index: i, number: i + 1, count: frequencies[i] });
+            }
+
+            // Absteigend sortieren
+            stats.sort((a, b) => b.count - a.count);
+
+            // Farben im Diagramm aktualisieren
+            updateChartColors(stats);
+
+            // Top 6 Liste aufbauen
+            const listElement = document.getElementById('topNumbersList');
+            listElement.innerHTML = ''; 
+
+            const limit = Math.min(6, stats.length);
+            for (let i = 0; i < limit; i++) {
+                if (stats[i].count > 0) { 
+                    const li = document.createElement('li');
+                    li.className = 'top-highlight'; // Macht auch in der Liste einen roten Rand
+                    li.textContent = `${i + 1}. Platz: Zahl ${stats[i].number} (${stats[i].count}x)`;
+                    listElement.appendChild(li);
+                }
+            }
+        }
+
+        frequencies = new Array(49).fill(0);
+        initChart(49);
+
+        startBtn.addEventListener('click', () => {
+            targetCount = parseInt(countInput.value);
+            currentMaxNumber = parseInt(maxInput.value);
+            
+            if (isNaN(targetCount) || targetCount <= 0) {
+                alert("Bitte gib eine gültige Anzahl an Zahlen ein.");
+                return;
+            }
+            if (isNaN(currentMaxNumber) || currentMaxNumber < 2) {
+                alert("Bitte gib einen Maximalwert von mindestens 2 ein.");
+                return;
+            }
+
+            frequencies = new Array(currentMaxNumber).fill(0);
+            initChart(currentMaxNumber);
+
+            document.getElementById('number-output').innerHTML = '';
+            document.getElementById('topNumbersList').innerHTML = ''; 
+            progressBar.style.width = '0%'; // Fortschrittsbalken zurücksetzen
+            generatedCount = 0;
+
+            startBtn.disabled = true;
+            countInput.disabled = true;
+            maxInput.disabled = true;
+
+            intervalId = setInterval(generateNumber, 20);
+        });
+
+        function generateNumber() {
+            const randomNum = Math.floor(Math.random() * currentMaxNumber) + 1;
+            const outputDiv = document.getElementById('number-output');
+            
+            outputDiv.appendChild(document.createTextNode(randomNum + " "));
+            frequencies[randomNum - 1]++; 
+            generatedCount++;
+
+            // Fortschrittsbalken updaten
+            const progressPercent = (generatedCount / targetCount) * 100;
+            progressBar.style.width = progressPercent + '%';
+
+            // PERFORMANCE BOOST: Aktualisiert Diagramm, Liste und Scrollen nur jede 5. Zahl 
+            if (generatedCount % 5 === 0 || generatedCount === targetCount) {
+                updateTopNumbers(); // Berechnet Top 6 UND färbt Diagramm ein
+                myChart.update();
+                outputDiv.scrollTop = outputDiv.scrollHeight;
+            }
+
+            if (generatedCount >= targetCount) {
+                clearInterval(intervalId); 
+                startBtn.disabled = false; 
+                countInput.disabled = false; 
+                maxInput.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
