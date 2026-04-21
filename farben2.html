@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Live Color Picker</title>
+    <title>Color Picker</title>
     <style>
         :root {
             --bg-gray: #f4f4f7;
@@ -65,6 +65,7 @@
             pointer-events: none;
             text-align: center;
             padding: 20px;
+            z-index: 5;
         }
 
         .crosshair {
@@ -77,64 +78,39 @@
             transform: translate(-50%, -50%);
             pointer-events: none;
             display: none;
+            z-index: 10;
         }
 
-        .crosshair::after {
-            content: '';
+        .status-overlay {
             position: absolute;
-            top: 50%; left: 50%;
-            width: 4px; height: 4px;
-            background: white;
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-        }
-
-        .button-group {
-            display: flex;
-            gap: 10px;
-            width: 100%;
-            margin-top: 15px;
-        }
-
-        .btn {
-            flex: 1;
-            padding: 12px 10px;
-            border-radius: 20px;
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.6);
             color: white;
-            border: none;
-            font-weight: bold;
-            font-size: 0.95rem;
-            cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            padding: 5px 10px;
+            border-radius: 10px;
+            font-size: 0.75rem;
             text-align: center;
-            transition: all 0.2s ease;
-        }
-
-        .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: scale(1) !important;
-        }
-
-        .btn:active:not(:disabled) {
-            transform: scale(0.96);
+            display: none;
+            z-index: 15;
         }
 
         .btn-camera {
+            width: 100%;
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 25px;
+            color: white;
+            border: none;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
             background: linear-gradient(135deg, #0077b6, #00b4d8);
+            box-shadow: 0 4px 15px rgba(0, 119, 182, 0.3);
         }
 
-        .btn-share {
-            background: linear-gradient(135deg, #2a9d8f, #264653);
-            display: none;
-        }
-
-        input[type="file"] {
-            display: none;
-        }
+        input[type="file"] { display: none; }
 
         .palette-card {
             background: var(--panel-bg);
@@ -168,11 +144,7 @@
             background-color: #cccccc;
         }
 
-        .palette-list {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
+        .palette-list { display: flex; flex-direction: column; gap: 8px; }
 
         .swatch {
             height: 45px;
@@ -188,7 +160,6 @@
             font-weight: bold;
             text-shadow: 0 1px 2px rgba(0,0,0,0.5);
             border: 1px solid rgba(0,0,0,0.05);
-            background-color: #eee;
         }
     </style>
 </head>
@@ -196,54 +167,48 @@
 
 <div class="container">
     <div class="photo-card">
-        <span class="section-title">Foto & Farbauswahl</span>
+        <span class="section-title">Automatische Analyse</span>
         
         <div class="canvas-wrapper" id="canvasWrapper">
-            <div class="placeholder-text" id="placeholderText">Kamera öffnen, um ein Foto zu laden</div>
+            <div class="placeholder-text" id="placeholderText">Kamera öffnen...</div>
+            <div class="status-overlay" id="statusOverlay">Upload läuft...</div>
             <canvas id="imageCanvas"></canvas>
             <div class="crosshair" id="crosshair"></div>
         </div>
 
-        <div class="button-group">
-            <button class="btn btn-camera" onclick="document.getElementById('cameraInput').click()">
-                📷 Kamera
-            </button>
-            <button class="btn btn-share" id="btnShare" onclick="uploadAndShare()">
-                📤 Hochladen & Teilen
-            </button>
-        </div>
+        <button class="btn-camera" onclick="document.getElementById('cameraInput').click()">
+            📷 Foto aufnehmen
+        </button>
         
         <input type="file" id="cameraInput" accept="image/*" capture="environment">
     </div>
 
     <div class="palette-card">
         <span class="section-title">Gepickte Farbe</span>
-        <div id="mainPreview" class="main-preview">Wähle eine Farbe</div>
+        <div id="mainPreview" class="main-preview">Farbe wählen</div>
         
         <span class="section-title">Harmonische Palette</span>
         <div id="paletteList" class="palette-list">
-            <div class="swatch"><span style="color:#888; text-shadow:none;">Warte auf Foto...</span></div>
+            <div class="swatch" style="background:#eee;"><span style="color:#888;">Noch kein Foto...</span></div>
         </div>
     </div>
 </div>
 
 <script>
-    // Dein API Key
     const IMGBB_API_KEY = 'db0140da04ee376ddc7621f570fa69e3';
-
+    
     const cameraInput = document.getElementById('cameraInput');
     const canvas = document.getElementById('imageCanvas');
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     const wrapper = document.getElementById('canvasWrapper');
-    const placeholderText = document.getElementById('placeholderText');
+    const statusOverlay = document.getElementById('statusOverlay');
     const crosshair = document.getElementById('crosshair');
-    const btnShare = document.getElementById('btnShare');
     const mainPreview = document.getElementById('mainPreview');
     const paletteList = document.getElementById('paletteList');
 
     let imageLoaded = false;
 
-    // Kamera-Bild laden
+    // 1. Sobald ein Bild gewählt/aufgenommen wurde
     cameraInput.addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (!file) return;
@@ -252,11 +217,10 @@
         reader.onload = function(event) {
             const img = new Image();
             img.onload = function() {
-                placeholderText.style.display = 'none';
-                crosshair.style.display = 'none';
-                btnShare.style.display = 'flex'; 
+                document.getElementById('placeholderText').style.display = 'none';
                 imageLoaded = true;
 
+                // Canvas anpassen
                 const rect = wrapper.getBoundingClientRect();
                 canvas.width = rect.width;
                 canvas.height = rect.height;
@@ -268,60 +232,21 @@
                 const y = (canvas.height - h) / 2;
 
                 ctx.drawImage(img, x, y, w, h);
+                
+                // --- AUTOMATISCHER UPLOAD START ---
+                autoUpload();
             }
             img.src = event.target.result;
         }
         reader.readAsDataURL(file);
     });
 
-    // Farbauswahl-Logik
-    function pickColor(e) {
-        if (!imageLoaded) return;
-
-        const rect = canvas.getBoundingClientRect();
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        
-        const x = clientX - rect.left;
-        const y = clientY - rect.top;
-
-        crosshair.style.display = 'block';
-        crosshair.style.left = `${x}px`;
-        crosshair.style.top = `${y}px`;
-
-        try {
-            const pixel = ctx.getImageData(x, y, 1, 1).data;
-            const hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
-            const hsl = rgbToHsl(pixel[0], pixel[1], pixel[2]);
-
-            mainPreview.style.backgroundColor = hex;
-            mainPreview.textContent = hex;
-            updatePalette(hsl);
-        } catch (e) {
-            console.error("Fehler beim Pixel-Lesen:", e);
-        }
-    }
-
-    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); pickColor(e); });
-    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); pickColor(e); });
-    canvas.addEventListener('mousedown', pickColor);
-
-    // NEU: Upload & Share Funktion mit detaillierter Fehlerprüfung
-    async function uploadAndShare() {
-        if (!imageLoaded) return;
-        
-        const originalBtnText = btnShare.innerHTML;
-        btnShare.innerHTML = "⏳ Lade hoch...";
-        btnShare.disabled = true;
+    // 2. Upload Logik (wird automatisch aufgerufen)
+    function autoUpload() {
+        statusOverlay.style.display = 'block';
+        statusOverlay.textContent = "⏳ Upload zu imgBB...";
 
         canvas.toBlob(async (blob) => {
-            if (!blob) {
-                alert("Fehler: Bild konnte nicht verarbeitet werden.");
-                btnShare.innerHTML = originalBtnText;
-                btnShare.disabled = false;
-                return;
-            }
-
             const formData = new FormData();
             formData.append("image", blob);
 
@@ -330,41 +255,49 @@
                     method: "POST",
                     body: formData
                 });
-
                 const data = await response.json();
 
                 if (data.success) {
-                    const imageUrl = data.data.url;
-                    
-                    if (navigator.share) {
-                        try {
-                            await navigator.share({
-                                title: 'Meine Farbanalyse',
-                                text: 'Schau dir meine Farbanalyse an!',
-                                url: imageUrl
-                            });
-                        } catch (shareErr) {
-                            console.log("Teilen vom User abgebrochen.");
-                        }
-                    } else {
-                        await navigator.clipboard.writeText(imageUrl);
-                        alert("Link kopiert!\n" + imageUrl);
-                    }
+                    statusOverlay.textContent = "✅ Hochgeladen!";
+                    console.log("URL:", data.data.url);
+                    // Nach 3 Sekunden Status ausblenden
+                    setTimeout(() => { statusOverlay.style.display = 'none'; }, 3000);
                 } else {
-                    // Fehlermeldung von imgBB (z.B. falscher Key)
-                    alert("imgBB Fehler: " + (data.error ? data.error.message : "Unbekannter Fehler"));
+                    statusOverlay.textContent = "❌ Fehler beim Upload";
                 }
-            } catch (error) {
-                console.error("Netzwerkfehler:", error);
-                alert("Netzwerkfehler: Falls du die Datei lokal öffnest, blockiert dein Browser den Upload (CORS-Fehler). Nutze einen Webserver oder CodePen.");
-            } finally {
-                btnShare.innerHTML = originalBtnText;
-                btnShare.disabled = false;
+            } catch (err) {
+                statusOverlay.textContent = "❌ Netzwerkfehler (CORS?)";
             }
         }, 'image/jpeg', 0.8);
     }
 
-    // Hilfsfunktionen für Farben
+    // 3. Color Picker Logik
+    function pickColor(e) {
+        if (!imageLoaded) return;
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+
+        crosshair.style.display = 'block';
+        crosshair.style.left = `${x}px`;
+        crosshair.style.top = `${y}px`;
+
+        const pixel = ctx.getImageData(x, y, 1, 1).data;
+        const hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
+        const hsl = rgbToHsl(pixel[0], pixel[1], pixel[2]);
+
+        mainPreview.style.backgroundColor = hex;
+        mainPreview.textContent = hex;
+        updatePalette(hsl);
+    }
+
+    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); pickColor(e); });
+    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); pickColor(e); });
+    canvas.addEventListener('mousedown', pickColor);
+
+    // Hilfsfunktionen
     function rgbToHex(r, g, b) {
         return "#" + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
     }
