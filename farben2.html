@@ -110,11 +110,12 @@
             align-items: center;
             justify-content: center;
             text-align: center;
-            transition: opacity 0.2s;
+            transition: all 0.2s;
         }
 
         .btn:disabled {
             opacity: 0.6;
+            transform: scale(1) !important;
             cursor: not-allowed;
         }
 
@@ -227,8 +228,8 @@
 </div>
 
 <script>
-    // HIER DEINEN API KEY EINTRAGEN
-    const IMGBB_API_KEY = db0140da04ee376ddc7621f570fa69e3;
+    // Dein eingefügter API-Key
+    const IMGBB_API_KEY = 'db0140da04ee376ddc7621f570fa69e3';
 
     const cameraInput = document.getElementById('cameraInput');
     const canvas = document.getElementById('imageCanvas');
@@ -322,11 +323,15 @@
                     const imageUrl = data.data.url;
                     
                     if (navigator.share) {
-                        await navigator.share({
-                            title: 'Meine Farbanalyse',
-                            text: 'Schau dir meine Farbanalyse an!',
-                            url: imageUrl
-                        });
+                        try {
+                            await navigator.share({
+                                title: 'Meine Farbanalyse',
+                                text: 'Schau dir meine Farbanalyse an!',
+                                url: imageUrl
+                            });
+                        } catch (err) {
+                            console.log("Teilen abgebrochen");
+                        }
                     } else {
                         await navigator.clipboard.writeText(imageUrl);
                         alert("Hochgeladen! Link kopiert:\n" + imageUrl);
@@ -336,7 +341,7 @@
                 }
             } catch (error) {
                 console.error("Fehler:", error);
-                alert("Upload-Fehler. API-Key korrekt?");
+                alert("Upload-Fehler. Bitte Internetverbindung prüfen.");
             } finally {
                 btnShare.innerHTML = originalBtnText;
                 btnShare.disabled = false;
