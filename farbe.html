@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Komplementärfarbe</title>
+    <style>
+        :root {
+            --bg-gray: #e0e0e0;
+            --panel-bg: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--bg-gray);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .main-container {
+            display: flex;
+            gap: 20px;
+            background: var(--panel-bg);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+        }
+
+        /* Linke Seite: Farbwahl */
+        .picker-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        canvas {
+            border-radius: 8px;
+            cursor: crosshair;
+            border: 1px solid #ccc;
+        }
+
+        .color-info {
+            margin-top: 15px;
+            font-family: monospace;
+            font-size: 1.1rem;
+            background: #eee;
+            padding: 8px 15px;
+            border-radius: 5px;
+        }
+
+        /* Rechte Seite: Palette */
+        .palette-section {
+            width: 220px;
+            border-left: 2px solid #eee;
+            padding-left: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .palette-label {
+            font-weight: bold;
+            color: #444;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+        }
+
+        .main-color-preview {
+            width: 100%;
+            height: 80px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-shadow: 0 0 3px rgba(0,0,0,0.5);
+            font-weight: bold;
+            transition: background 0.1s;
+        }
+
+        .palette-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .swatch {
+            height: 35px;
+            width: 100%;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            padding-left: 10px;
+            font-size: 0.75rem;
+            font-family: monospace;
+            color: white;
+            text-shadow: 0 0 2px rgba(0,0,0,0.5);
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="main-container">
+    <div class="picker-section">
+        <h3 style="margin-top:0">Farbwähler</h3>
+        <canvas id="colorCanvas" width="350" height="300"></canvas>
+        <div id="hexText" class="color-info">#FFFFFF</div>
+    </div>
+
+    <div class="palette-section">
+        <div class="palette-label">Hauptfarbe</div>
+        <div id="mainPreview" class="main-color-preview">#FFFFFF</div>
+        
+        <div class="palette-label" style="margin-top:15px">Komplementär-Palette</div>
+        <div id="paletteGrid" class="palette-grid">
+            </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('colorCanvas');
+    const ctx = canvas.getContext('2d');
+    const hexText = document.getElementById('hexText');
+    const mainPreview = document.getElementById('mainPreview');
+    const paletteGrid = document.getElementById('paletteGrid');
+
+    function drawPicker() {
+        const w = canvas.width;
+        const h = canvas.height;
+
+        // 1. Regenbogen Hintergrund
+        const hueGrad = ctx.createLinearGradient(0, 0, w, 0);
+        hueGrad.addColorStop(0, "red");
+        hueGrad.addColorStop(0.17, "orange");
+        hueGrad.addColorStop(0.33, "yellow");
+        hueGrad.addColorStop(0.5, "green");
+        hueGrad.addColorStop(0.67, "cyan");
+        hueGrad.addColorStop(0.83, "blue");
+        hueGrad.addColorStop(1, "magenta");
+        ctx.fillStyle = hueGrad;
+        ctx.fillRect(0, 0, w, h);
+
+        // 2. Weiß-Verlauf (oben nach unten)
+        const whiteGrad = ctx.createLinearGradient(0, 0, 0, h/2);
+        whiteGrad.addColorStop(0, "white");
+        whiteGrad.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.fillStyle = whiteGrad;
+        ctx.fillRect(0, 0, w, h/2);
+
+        // 3. Schwarz-Verlauf (unten nach oben)
+        const blackGrad = ctx.createLinearGradient(0, h/2, 0, h);
+        blackGrad.addColorStop(0, "rgba(0,0,0,0)");
+        blackGrad.addColorStop(1, "black");
+        ctx.fillStyle = blackGrad;
+        ctx.fillRect(0, h/2, w, h/2);
+    }
+
+    function rgbToHex(r, g, b) {
+        return "#" + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
+    }
+
+    // Wandelt RGB in HSL um für bessere Komplementär-Berechnung
+    function rgbToHsl(r, g, b) {
+        r /= 255; g /= 255; b /= 255;
+        const max = Math.max(r, g, b), min = Math.min(r, g, b);
+        let h, s, l = (max + min) / 2;
+        if (max === min) h = s = 0;
+        else {
+            const d = max - min;
+            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+            switch (max) {
+                case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                case g: h = (b - r) / d + 2; break;
+                case b: h = (r - g) / d + 4; break;
+            }
+            h /= 6;
+        }
+        return [h * 360, s * 100, l * 100];
+    }
+
+    function hslToHex(h, s, l) {
+        l /= 100;
+        const a = s * Math.min(l, 1 - l) / 100;
+        const f = n => {
+            const k = (n + h / 30) % 12;
+            const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+            return Math.round(255 * color).toString(16).padStart(2, '0');
+        };
+        return `#${f(0)}${f(8)}${f(4)}`.toUpperCase();
+    }
+
+    function updateColors(e) {
+        const rect = canvas.getBoundingClientRect();
+        const x = Math.min(canvas.width - 1, Math.max(0, e.clientX - rect.left));
+        const y = Math.min(canvas.height - 1, Math.max(0, e.clientY - rect.top));
+        
+        const data = ctx.getImageData(x, y, 1, 1).data;
+        const hex = rgbToHex(data[0], data[1], data[2]);
+        const hsl = rgbToHsl(data[0], data[1], data[2]);
+
+        // Main UI
+        hexText.textContent = hex;
+        mainPreview.style.backgroundColor = hex;
+        mainPreview.textContent = hex;
+
+        // Palette generieren (5 Farben: Komplementär + Varianten)
+        paletteGrid.innerHTML = '';
+        const compHue = (hsl[0] + 180) % 360; // Exakt gegenüberliegend
+        
+        const palette = [
+            hslToHex(compHue, hsl[1], Math.min(hsl[2] + 20, 90)), // Hell
+            hslToHex(compHue, hsl[1], hsl[2]),                   // Basis Komplementär
+            hslToHex(compHue, hsl[1], Math.max(hsl[2] - 20, 10)), // Dunkel
+            hslToHex((hsl[0] + 30) % 360, hsl[1], hsl[2]),       // Analog 1
+            hslToHex((hsl[0] - 30) % 360, hsl[1], hsl[2])        // Analog 2
+        ];
+
+        palette.forEach(color => {
+            const swatch = document.createElement('div');
+            swatch.className = 'swatch';
+            swatch.style.backgroundColor = color;
+            swatch.textContent = color;
+            paletteGrid.appendChild(swatch);
+        });
+    }
+
+    let dragging = false;
+    canvas.addEventListener('mousedown', (e) => { dragging = true; updateColors(e); });
+    window.addEventListener('mousemove', (e) => { if (dragging) updateColors(e); });
+    window.addEventListener('mouseup', () => dragging = false);
+
+    drawPicker();
+</script>
+
+</body>
+</html>
