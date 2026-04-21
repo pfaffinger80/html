@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Live Color Picker</title>
+    <style>
+        :root {
+            --bg-gray: #f4f4f7;
+            --panel-bg: #ffffff;
+            --border-radius: 16px;
+        }
+
+        body, html {
+            margin: 0; padding: 0;
+            height: 100%; width: 100%;
+            background-color: var(--bg-gray);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 400px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            box-sizing: border-box;
+        }
+
+        /* Foto-Bereich */
+        .photo-card {
+            background: var(--panel-bg);
+            padding: 15px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .canvas-wrapper {
+            width: 100%;
+            height: 300px;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            background-color: #eee;
+            border: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        canvas {
+            display: block;
+            touch-action: none; /* Wichtig: Verhindert Scrollen beim Tippen auf das Bild */
+        }
+
+        .placeholder-text {
+            position: absolute;
+            color: #888;
+            font-weight: bold;
+            pointer-events: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .crosshair {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border: 2px solid white;
+            border-radius: 50%;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            display: none;
+        }
+
+        .crosshair::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 4px; height: 4px;
+            background: white;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* Kamera Button */
+        .btn-camera {
+            width: 100%;
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 30px;
+            background: linear-gradient(135deg, #0077b6, #00b4d8);
+            color: white;
+            border: none;
+            font-weight: bold;
+            font-size: 1.1rem;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0, 119, 182, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-camera:active {
+            transform: scale(0.98);
+        }
+
+        /* Verstecktes Input-Feld für die Kamera */
+        input[type="file"] {
+            display: none;
+        }
+
+        /* Paletten-Bereich */
+        .palette-card {
+            background: var(--panel-bg);
+            padding: 15px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+
+        .section-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #888;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .main-preview {
+            width: 100%;
+            height: 60px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: bold;
+            font-size: 1.2rem;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+            border: 1px solid rgba(0,0,0,0.1);
+            background-color: #cccccc; /* Startfarbe */
+        }
+
+        .palette-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .swatch {
+            height: 45px;
+            width: 100%;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 15px;
+            box-sizing: border-box;
+            color: #fff;
+            font-family: 'SF Mono', monospace;
+            font-weight: bold;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+            border: 1px solid rgba(0,0,0,0.05);
+            background-color: #eee;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="photo-card">
+        <span class="section-title">Foto aufnehmen & Farbe tippen</span>
+        
+        <div class="canvas-wrapper" id="canvasWrapper">
+            <div class="placeholder-text" id="placeholderText">Kamera öffnen, um ein Foto zu laden</div>
+            <canvas id="imageCanvas"></canvas>
+            <div class="crosshair" id="crosshair"></div>
+        </div>
+
+        <button class="btn-camera" onclick="document.getElementById('cameraInput').click()">
+            📷 Kamera öffnen
+        </button>
+        <input type="file" id="cameraInput" accept="image/*" capture="environment">
+    </div>
+
+    <div class="palette-card">
+        <span class="section-title">Gepickte Farbe</span>
+        <div id="mainPreview" class="main-preview">Wähle eine Farbe</div>
+        
+        <span class="section-title">Harmonische Palette (Komplementär & Analog)</span>
+        <div id="paletteList" class="palette-list">
+            <div class="swatch"><span>Warte auf Foto...</span></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const cameraInput = document.getElementById('cameraInput');
+    const canvas = document.getElementById('imageCanvas');
+    const ctx = canvas.getContext('2d');
+    const wrapper = document.getElementById('canvasWrapper');
+    const placeholderText = document.getElementById('placeholderText');
+    const crosshair = document.getElementById('crosshair');
+    
+    const mainPreview = document.getElementById('mainPreview');
+    const paletteList = document.getElementById('paletteList');
+
+    let imageLoaded = false;
+
+    // 1. Kamera-Bild laden und auf Canvas zeichnen
+    cameraInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const img = new Image();
+            img.onload = function() {
+                // Platzhalter verstecken
+                placeholderText.style.display = 'none';
+                crosshair.style.display = 'none';
+                imageLoaded = true;
+
+                // Canvas-Größe an den Wrapper anpassen
+                const rect = wrapper.getBoundingClientRect();
+                canvas.width = rect.width;
+                canvas.height = rect.height;
+
+                // Bild zuschneiden/skalieren (object-fit: cover Simulation)
+                const scale = Math.max(canvas.width / img.width, canvas.height / img.height);
+                const w = img.width * scale;
+                const h = img.height * scale;
+                const x = (canvas.width - w) / 2;
+                const y = (canvas.height - h) / 2;
+
+                ctx.drawImage(img, x, y, w, h);
+            }
+            img.src = event.target.result;
+        }
+        reader.readAsDataURL(file);
+    });
+
+    // 2. Klick/Touch auf das Bild, um Pixel-Farbe auszulesen
+    function pickColor(e) {
+        if (!imageLoaded) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        
+        // Exakte Position auf dem Canvas berechnen
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+
+        // Fadenkreuz positionieren
+        crosshair.style.display = 'block';
+        crosshair.style.left = `${x}px`;
+        crosshair.style.top = `${y}px`;
+
+        // Pixel-Daten auslesen (1x1 Pixel)
+        const pixel = ctx.getImageData(x, y, 1, 1).data;
+        const r = pixel[0];
+        const g = pixel[1];
+        const b = pixel[2];
+
+        const hex = rgbToHex(r, g, b);
+        const hsl = rgbToHsl(r, g, b);
+
+        // UI Aktualisieren
+        mainPreview.style.backgroundColor = hex;
+        mainPreview.textContent = hex;
+        updatePalette(hsl);
+    }
+
+    // Touch-Events für das iPhone
+    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); pickColor(e); });
+    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); pickColor(e); });
+    canvas.addEventListener('mousedown', pickColor);
+
+    // --- Farbberechnungs-Logik (wie zuvor) ---
+    function rgbToHex(r, g, b) {
+        return "#" + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
+    }
+
+    function rgbToHsl(r, g, b) {
+        r /= 255; g /= 255; b /= 255;
+        const max = Math.max(r, g, b), min = Math.min(r, g, b);
+        let h, s, l = (max + min) / 2;
+        if (max === min) h = s = 0;
+        else {
+            const d = max - min;
+            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+            switch (max) {
+                case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                case g: h = (b - r) / d + 2; break;
+                case b: h = (r - g) / d + 4; break;
+            }
+            h /= 6;
+        }
+        return [h * 360, s * 100, l * 100];
+    }
+
+    function hslToHex(h, s, l) {
+        l /= 100;
+        const a = s * Math.min(l, 1 - l) / 100;
+        const f = n => {
+            const k = (n + h / 30) % 12;
+            const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+            return Math.round(255 * color).toString(16).padStart(2, '0');
+        };
+        return `#${f(0)}${f(8)}${f(4)}`.toUpperCase();
+    }
+
+    function updatePalette(hsl) {
+        paletteList.innerHTML = '';
+        const compHue = (hsl[0] + 180) % 360;
+        
+        const palette = [
+            hslToHex(compHue, hsl[1], Math.min(hsl[2] + 20, 85)), // Komplementär Hell
+            hslToHex(compHue, hsl[1], hsl[2]),                   // Komplementär Basis
+            hslToHex(compHue, hsl[1], Math.max(hsl[2] - 20, 15)), // Komplementär Dunkel
+            hslToHex((hsl[0] + 30) % 360, hsl[1], hsl[2]),        // Analog 1 (Nachbarfarbe)
+            hslToHex((hsl[0] - 30) % 360, hsl[1], hsl[2])         // Analog 2 (Nachbarfarbe)
+        ];
+
+        palette.forEach(color => {
+            const swatch = document.createElement('div');
+            swatch.className = 'swatch';
+            swatch.style.backgroundColor = color;
+            swatch.innerHTML = `<span>${color}</span>`;
+            paletteList.appendChild(swatch);
+        });
+    }
+</script>
+
+</body>
+</html>
