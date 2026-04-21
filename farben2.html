@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Live Color Picker</title>
+    <title>Live Color Picker & Upload</title>
     <style>
         :root {
             --bg-gray: #f4f4f7;
@@ -110,13 +110,13 @@
             align-items: center;
             justify-content: center;
             text-align: center;
-            transition: all 0.2s;
+            transition: all 0.2s ease;
         }
 
         .btn:disabled {
             opacity: 0.6;
-            transform: scale(1) !important;
             cursor: not-allowed;
+            transform: scale(1) !important;
         }
 
         .btn:active:not(:disabled) {
@@ -228,7 +228,7 @@
 </div>
 
 <script>
-    // Dein eingefügter API-Key
+    // Dein API Key
     const IMGBB_API_KEY = 'db0140da04ee376ddc7621f570fa69e3';
 
     const cameraInput = document.getElementById('cameraInput');
@@ -243,6 +243,7 @@
 
     let imageLoaded = false;
 
+    // Kamera-Bild laden
     cameraInput.addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (!file) return;
@@ -253,7 +254,7 @@
             img.onload = function() {
                 placeholderText.style.display = 'none';
                 crosshair.style.display = 'none';
-                btnShare.style.display = 'flex';
+                btnShare.style.display = 'flex'; 
                 imageLoaded = true;
 
                 const rect = wrapper.getBoundingClientRect();
@@ -273,6 +274,7 @@
         reader.readAsDataURL(file);
     });
 
+    // Farbauswahl-Logik
     function pickColor(e) {
         if (!imageLoaded) return;
 
@@ -287,19 +289,24 @@
         crosshair.style.left = `${x}px`;
         crosshair.style.top = `${y}px`;
 
-        const pixel = ctx.getImageData(x, y, 1, 1).data;
-        const hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
-        const hsl = rgbToHsl(pixel[0], pixel[1], pixel[2]);
+        try {
+            const pixel = ctx.getImageData(x, y, 1, 1).data;
+            const hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
+            const hsl = rgbToHsl(pixel[0], pixel[1], pixel[2]);
 
-        mainPreview.style.backgroundColor = hex;
-        mainPreview.textContent = hex;
-        updatePalette(hsl);
+            mainPreview.style.backgroundColor = hex;
+            mainPreview.textContent = hex;
+            updatePalette(hsl);
+        } catch (e) {
+            console.error("Fehler beim Pixel-Lesen:", e);
+        }
     }
 
     canvas.addEventListener('touchstart', (e) => { e.preventDefault(); pickColor(e); });
     canvas.addEventListener('touchmove', (e) => { e.preventDefault(); pickColor(e); });
     canvas.addEventListener('mousedown', pickColor);
 
+    // NEU: Upload & Share Funktion mit detaillierter Fehlerprüfung
     async function uploadAndShare() {
         if (!imageLoaded) return;
         
@@ -308,6 +315,13 @@
         btnShare.disabled = true;
 
         canvas.toBlob(async (blob) => {
+            if (!blob) {
+                alert("Fehler: Bild konnte nicht verarbeitet werden.");
+                btnShare.innerHTML = originalBtnText;
+                btnShare.disabled = false;
+                return;
+            }
+
             const formData = new FormData();
             formData.append("image", blob);
 
@@ -329,26 +343,28 @@
                                 text: 'Schau dir meine Farbanalyse an!',
                                 url: imageUrl
                             });
-                        } catch (err) {
-                            console.log("Teilen abgebrochen");
+                        } catch (shareErr) {
+                            console.log("Teilen vom User abgebrochen.");
                         }
                     } else {
                         await navigator.clipboard.writeText(imageUrl);
-                        alert("Hochgeladen! Link kopiert:\n" + imageUrl);
+                        alert("Link kopiert!\n" + imageUrl);
                     }
                 } else {
-                    throw new Error("Upload fehlgeschlagen");
+                    // Fehlermeldung von imgBB (z.B. falscher Key)
+                    alert("imgBB Fehler: " + (data.error ? data.error.message : "Unbekannter Fehler"));
                 }
             } catch (error) {
-                console.error("Fehler:", error);
-                alert("Upload-Fehler. Bitte Internetverbindung prüfen.");
+                console.error("Netzwerkfehler:", error);
+                alert("Netzwerkfehler: Falls du die Datei lokal öffnest, blockiert dein Browser den Upload (CORS-Fehler). Nutze einen Webserver oder CodePen.");
             } finally {
                 btnShare.innerHTML = originalBtnText;
                 btnShare.disabled = false;
             }
-        }, 'image/jpeg', 0.9);
+        }, 'image/jpeg', 0.8);
     }
 
+    // Hilfsfunktionen für Farben
     function rgbToHex(r, g, b) {
         return "#" + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
     }
