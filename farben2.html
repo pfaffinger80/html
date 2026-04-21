@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Live Color Picker</title>
+    <title>Live Color Picker & Upload</title>
     <style>
         :root {
             --bg-gray: #f4f4f7;
@@ -30,7 +30,6 @@
             box-sizing: border-box;
         }
 
-        /* Foto-Bereich */
         .photo-card {
             background: var(--panel-bg);
             padding: 15px;
@@ -56,7 +55,7 @@
 
         canvas {
             display: block;
-            touch-action: none; /* Wichtig: Verhindert Scrollen beim Tippen auf das Bild */
+            touch-action: none;
         }
 
         .placeholder-text {
@@ -90,35 +89,52 @@
             transform: translate(-50%, -50%);
         }
 
-        /* Kamera Button */
-        .btn-camera {
+        .button-group {
+            display: flex;
+            gap: 10px;
             width: 100%;
             margin-top: 15px;
-            padding: 15px;
-            border-radius: 30px;
-            background: linear-gradient(135deg, #0077b6, #00b4d8);
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px 10px;
+            border-radius: 20px;
             color: white;
             border: none;
             font-weight: bold;
-            font-size: 1.1rem;
+            font-size: 0.95rem;
             cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0, 119, 182, 0.3);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
+            text-align: center;
+            transition: opacity 0.2s;
         }
 
-        .btn-camera:active {
-            transform: scale(0.98);
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
         }
 
-        /* Verstecktes Input-Feld für die Kamera */
+        .btn:active:not(:disabled) {
+            transform: scale(0.96);
+        }
+
+        .btn-camera {
+            background: linear-gradient(135deg, #0077b6, #00b4d8);
+        }
+
+        .btn-share {
+            background: linear-gradient(135deg, #2a9d8f, #264653);
+            display: none;
+        }
+
         input[type="file"] {
             display: none;
         }
 
-        /* Paletten-Bereich */
         .palette-card {
             background: var(--panel-bg);
             padding: 15px;
@@ -148,7 +164,7 @@
             font-size: 1.2rem;
             text-shadow: 0 1px 3px rgba(0,0,0,0.5);
             border: 1px solid rgba(0,0,0,0.1);
-            background-color: #cccccc; /* Startfarbe */
+            background-color: #cccccc;
         }
 
         .palette-list {
@@ -179,7 +195,7 @@
 
 <div class="container">
     <div class="photo-card">
-        <span class="section-title">Foto aufnehmen & Farbe tippen</span>
+        <span class="section-title">Foto & Farbauswahl</span>
         
         <div class="canvas-wrapper" id="canvasWrapper">
             <div class="placeholder-text" id="placeholderText">Kamera öffnen, um ein Foto zu laden</div>
@@ -187,9 +203,15 @@
             <div class="crosshair" id="crosshair"></div>
         </div>
 
-        <button class="btn-camera" onclick="document.getElementById('cameraInput').click()">
-            📷 Kamera öffnen
-        </button>
+        <div class="button-group">
+            <button class="btn btn-camera" onclick="document.getElementById('cameraInput').click()">
+                📷 Kamera
+            </button>
+            <button class="btn btn-share" id="btnShare" onclick="uploadAndShare()">
+                📤 Hochladen & Teilen
+            </button>
+        </div>
+        
         <input type="file" id="cameraInput" accept="image/*" capture="environment">
     </div>
 
@@ -197,27 +219,29 @@
         <span class="section-title">Gepickte Farbe</span>
         <div id="mainPreview" class="main-preview">Wähle eine Farbe</div>
         
-        <span class="section-title">Harmonische Palette (Komplementär & Analog)</span>
+        <span class="section-title">Harmonische Palette</span>
         <div id="paletteList" class="palette-list">
-            <div class="swatch"><span>Warte auf Foto...</span></div>
+            <div class="swatch"><span style="color:#888; text-shadow:none;">Warte auf Foto...</span></div>
         </div>
     </div>
 </div>
 
 <script>
+    // HIER DEINEN API KEY EINTRAGEN
+    const IMGBB_API_KEY = db0140da04ee376ddc7621f570fa69e3;
+
     const cameraInput = document.getElementById('cameraInput');
     const canvas = document.getElementById('imageCanvas');
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     const wrapper = document.getElementById('canvasWrapper');
     const placeholderText = document.getElementById('placeholderText');
     const crosshair = document.getElementById('crosshair');
-    
+    const btnShare = document.getElementById('btnShare');
     const mainPreview = document.getElementById('mainPreview');
     const paletteList = document.getElementById('paletteList');
 
     let imageLoaded = false;
 
-    // 1. Kamera-Bild laden und auf Canvas zeichnen
     cameraInput.addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (!file) return;
@@ -226,17 +250,15 @@
         reader.onload = function(event) {
             const img = new Image();
             img.onload = function() {
-                // Platzhalter verstecken
                 placeholderText.style.display = 'none';
                 crosshair.style.display = 'none';
+                btnShare.style.display = 'flex';
                 imageLoaded = true;
 
-                // Canvas-Größe an den Wrapper anpassen
                 const rect = wrapper.getBoundingClientRect();
                 canvas.width = rect.width;
                 canvas.height = rect.height;
 
-                // Bild zuschneiden/skalieren (object-fit: cover Simulation)
                 const scale = Math.max(canvas.width / img.width, canvas.height / img.height);
                 const w = img.width * scale;
                 const h = img.height * scale;
@@ -250,7 +272,6 @@
         reader.readAsDataURL(file);
     });
 
-    // 2. Klick/Touch auf das Bild, um Pixel-Farbe auszulesen
     function pickColor(e) {
         if (!imageLoaded) return;
 
@@ -258,36 +279,71 @@
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
         
-        // Exakte Position auf dem Canvas berechnen
         const x = clientX - rect.left;
         const y = clientY - rect.top;
 
-        // Fadenkreuz positionieren
         crosshair.style.display = 'block';
         crosshair.style.left = `${x}px`;
         crosshair.style.top = `${y}px`;
 
-        // Pixel-Daten auslesen (1x1 Pixel)
         const pixel = ctx.getImageData(x, y, 1, 1).data;
-        const r = pixel[0];
-        const g = pixel[1];
-        const b = pixel[2];
+        const hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
+        const hsl = rgbToHsl(pixel[0], pixel[1], pixel[2]);
 
-        const hex = rgbToHex(r, g, b);
-        const hsl = rgbToHsl(r, g, b);
-
-        // UI Aktualisieren
         mainPreview.style.backgroundColor = hex;
         mainPreview.textContent = hex;
         updatePalette(hsl);
     }
 
-    // Touch-Events für das iPhone
     canvas.addEventListener('touchstart', (e) => { e.preventDefault(); pickColor(e); });
     canvas.addEventListener('touchmove', (e) => { e.preventDefault(); pickColor(e); });
     canvas.addEventListener('mousedown', pickColor);
 
-    // --- Farbberechnungs-Logik (wie zuvor) ---
+    async function uploadAndShare() {
+        if (!imageLoaded) return;
+        
+        const originalBtnText = btnShare.innerHTML;
+        btnShare.innerHTML = "⏳ Lade hoch...";
+        btnShare.disabled = true;
+
+        canvas.toBlob(async (blob) => {
+            const formData = new FormData();
+            formData.append("image", blob);
+
+            try {
+                const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+                    method: "POST",
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const imageUrl = data.data.url;
+                    
+                    if (navigator.share) {
+                        await navigator.share({
+                            title: 'Meine Farbanalyse',
+                            text: 'Schau dir meine Farbanalyse an!',
+                            url: imageUrl
+                        });
+                    } else {
+                        await navigator.clipboard.writeText(imageUrl);
+                        alert("Hochgeladen! Link kopiert:\n" + imageUrl);
+                    }
+                } else {
+                    throw new Error("Upload fehlgeschlagen");
+                }
+            } catch (error) {
+                console.error("Fehler:", error);
+                alert("Upload-Fehler. API-Key korrekt?");
+            } finally {
+                btnShare.innerHTML = originalBtnText;
+                btnShare.disabled = false;
+            }
+        }, 'image/jpeg', 0.9);
+    }
+
     function rgbToHex(r, g, b) {
         return "#" + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
     }
@@ -324,15 +380,13 @@
     function updatePalette(hsl) {
         paletteList.innerHTML = '';
         const compHue = (hsl[0] + 180) % 360;
-        
         const palette = [
-            hslToHex(compHue, hsl[1], Math.min(hsl[2] + 20, 85)), // Komplementär Hell
-            hslToHex(compHue, hsl[1], hsl[2]),                   // Komplementär Basis
-            hslToHex(compHue, hsl[1], Math.max(hsl[2] - 20, 15)), // Komplementär Dunkel
-            hslToHex((hsl[0] + 30) % 360, hsl[1], hsl[2]),        // Analog 1 (Nachbarfarbe)
-            hslToHex((hsl[0] - 30) % 360, hsl[1], hsl[2])         // Analog 2 (Nachbarfarbe)
+            hslToHex(compHue, hsl[1], Math.min(hsl[2] + 20, 85)),
+            hslToHex(compHue, hsl[1], hsl[2]),
+            hslToHex(compHue, hsl[1], Math.max(hsl[2] - 20, 15)),
+            hslToHex((hsl[0] + 30) % 360, hsl[1], hsl[2]),
+            hslToHex((hsl[0] - 30) % 360, hsl[1], hsl[2])
         ];
-
         palette.forEach(color => {
             const swatch = document.createElement('div');
             swatch.className = 'swatch';
