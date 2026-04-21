@@ -2,124 +2,132 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Komplementärfarbe</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mobile Color Designer</title>
     <style>
         :root {
-            --bg-gray: #e0e0e0;
+            --bg-gray: #f4f4f7;
             --panel-bg: #ffffff;
+            --border-radius: 12px;
         }
 
-        body {
-            font-family: 'Segoe UI', sans-serif;
+        body, html {
+            margin: 0; padding: 0;
+            height: 100%; width: 100%;
             background-color: var(--bg-gray);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             display: flex;
             justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
         }
 
-        .main-container {
+        .container {
+            width: 100%;
+            max-width: 400px; /* iPhone 13 Breite */
+            padding: 15px;
             display: flex;
-            gap: 20px;
-            background: var(--panel-bg);
-            padding: 25px;
-            border-radius: 15px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            flex-direction: column;
+            gap: 15px;
+            box-sizing: border-box;
         }
 
-        /* Linke Seite: Farbwahl */
-        .picker-section {
+        /* Farbwähler Sektion */
+        .picker-card {
+            background: var(--panel-bg);
+            padding: 15px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
             display: flex;
             flex-direction: column;
             align-items: center;
         }
 
         canvas {
+            width: 100% !important;
+            height: auto !important;
+            aspect-ratio: 1 / 0.8;
             border-radius: 8px;
-            cursor: crosshair;
-            border: 1px solid #ccc;
+            touch-action: none; /* Wichtig für flüssiges Ziehen auf Mobile */
+            border: 1px solid #ddd;
         }
 
-        .color-info {
+        .hex-display {
             margin-top: 15px;
-            font-family: monospace;
-            font-size: 1.1rem;
-            background: #eee;
-            padding: 8px 15px;
-            border-radius: 5px;
-        }
-
-        /* Rechte Seite: Palette */
-        .palette-section {
-            width: 220px;
-            border-left: 2px solid #eee;
-            padding-left: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .palette-label {
+            font-family: 'SF Mono', Menlo, monospace;
+            font-size: 1.4rem;
             font-weight: bold;
-            color: #444;
-            margin-bottom: 5px;
-            font-size: 0.9rem;
-            text-transform: uppercase;
+            color: #333;
+            letter-spacing: 1px;
         }
 
-        .main-color-preview {
+        /* Palette Sektion (jetzt unter dem Picker) */
+        .palette-card {
+            background: var(--panel-bg);
+            padding: 15px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+
+        .section-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #888;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .main-preview {
             width: 100%;
-            height: 80px;
+            height: 60px;
             border-radius: 8px;
-            border: 1px solid #ccc;
+            margin-bottom: 15px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
-            text-shadow: 0 0 3px rgba(0,0,0,0.5);
+            color: #fff;
             font-weight: bold;
-            transition: background 0.1s;
-        }
-
-        .palette-grid {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-
-        .swatch {
-            height: 35px;
-            width: 100%;
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            padding-left: 10px;
-            font-size: 0.75rem;
-            font-family: monospace;
-            color: white;
-            text-shadow: 0 0 2px rgba(0,0,0,0.5);
+            text-shadow: 0 1px 3px rgba(0,0,0,0.3);
             border: 1px solid rgba(0,0,0,0.1);
         }
 
+        .palette-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .swatch {
+            height: 45px;
+            width: 100%;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 15px;
+            box-sizing: border-box;
+            color: #fff;
+            font-family: monospace;
+            font-weight: bold;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            border: 1px solid rgba(0,0,0,0.05);
+        }
     </style>
 </head>
 <body>
 
-<div class="main-container">
-    <div class="picker-section">
-        <h3 style="margin-top:0">Farbwähler</h3>
-        <canvas id="colorCanvas" width="350" height="300"></canvas>
-        <div id="hexText" class="color-info">#FFFFFF</div>
+<div class="container">
+    <div class="picker-card">
+        <span class="section-title">Farbwahl</span>
+        <canvas id="colorCanvas"></canvas>
+        <div id="hexText" class="hex-display">#FFFFFF</div>
     </div>
 
-    <div class="palette-section">
-        <div class="palette-label">Hauptfarbe</div>
-        <div id="mainPreview" class="main-color-preview">#FFFFFF</div>
+    <div class="palette-card">
+        <span class="section-title">Ausgewählte Farbe</span>
+        <div id="mainPreview" class="main-preview">#FFFFFF</div>
         
-        <div class="palette-label" style="margin-top:15px">Komplementär-Palette</div>
-        <div id="paletteGrid" class="palette-grid">
+        <span class="section-title">Komplementär & Analog</span>
+        <div id="paletteList" class="palette-list">
             </div>
     </div>
 </div>
@@ -129,13 +137,20 @@
     const ctx = canvas.getContext('2d');
     const hexText = document.getElementById('hexText');
     const mainPreview = document.getElementById('mainPreview');
-    const paletteGrid = document.getElementById('paletteGrid');
+    const paletteList = document.getElementById('paletteList');
 
-    function drawPicker() {
-        const w = canvas.width;
-        const h = canvas.height;
+    // Canvas für High-DPI (Retina) vorbereiten
+    function setupCanvas() {
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        ctx.scale(dpr, dpr);
+        drawPicker(rect.width, rect.height);
+    }
 
-        // 1. Regenbogen Hintergrund
+    function drawPicker(w, h) {
+        // Regenbogen
         const hueGrad = ctx.createLinearGradient(0, 0, w, 0);
         hueGrad.addColorStop(0, "red");
         hueGrad.addColorStop(0.17, "orange");
@@ -147,14 +162,13 @@
         ctx.fillStyle = hueGrad;
         ctx.fillRect(0, 0, w, h);
 
-        // 2. Weiß-Verlauf (oben nach unten)
+        // Licht/Schatten Überlagerung
         const whiteGrad = ctx.createLinearGradient(0, 0, 0, h/2);
         whiteGrad.addColorStop(0, "white");
         whiteGrad.addColorStop(1, "rgba(255,255,255,0)");
         ctx.fillStyle = whiteGrad;
         ctx.fillRect(0, 0, w, h/2);
 
-        // 3. Schwarz-Verlauf (unten nach oben)
         const blackGrad = ctx.createLinearGradient(0, h/2, 0, h);
         blackGrad.addColorStop(0, "rgba(0,0,0,0)");
         blackGrad.addColorStop(1, "black");
@@ -166,7 +180,6 @@
         return "#" + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
     }
 
-    // Wandelt RGB in HSL um für bessere Komplementär-Berechnung
     function rgbToHsl(r, g, b) {
         r /= 255; g /= 255; b /= 255;
         const max = Math.max(r, g, b), min = Math.min(r, g, b);
@@ -196,47 +209,64 @@
         return `#${f(0)}${f(8)}${f(4)}`.toUpperCase();
     }
 
-    function updateColors(e) {
+    function handleInteraction(e) {
         const rect = canvas.getBoundingClientRect();
-        const x = Math.min(canvas.width - 1, Math.max(0, e.clientX - rect.left));
-        const y = Math.min(canvas.height - 1, Math.max(0, e.clientY - rect.top));
+        const dpr = window.devicePixelRatio || 1;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
         
+        let x = (clientX - rect.left) * dpr;
+        let y = (clientY - rect.top) * dpr;
+
+        // Sicherstellen, dass die Koordinaten im Canvas bleiben
+        x = Math.max(0, Math.min(canvas.width - 1, x));
+        y = Math.max(0, Math.min(canvas.height - 1, y));
+
         const data = ctx.getImageData(x, y, 1, 1).data;
         const hex = rgbToHex(data[0], data[1], data[2]);
         const hsl = rgbToHsl(data[0], data[1], data[2]);
 
-        // Main UI
         hexText.textContent = hex;
         mainPreview.style.backgroundColor = hex;
         mainPreview.textContent = hex;
 
-        // Palette generieren (5 Farben: Komplementär + Varianten)
-        paletteGrid.innerHTML = '';
-        const compHue = (hsl[0] + 180) % 360; // Exakt gegenüberliegend
+        updatePalette(hsl);
+    }
+
+    function updatePalette(hsl) {
+        paletteList.innerHTML = '';
+        const compHue = (hsl[0] + 180) % 360;
         
         const palette = [
-            hslToHex(compHue, hsl[1], Math.min(hsl[2] + 20, 90)), // Hell
-            hslToHex(compHue, hsl[1], hsl[2]),                   // Basis Komplementär
-            hslToHex(compHue, hsl[1], Math.max(hsl[2] - 20, 10)), // Dunkel
-            hslToHex((hsl[0] + 30) % 360, hsl[1], hsl[2]),       // Analog 1
-            hslToHex((hsl[0] - 30) % 360, hsl[1], hsl[2])        // Analog 2
+            hslToHex(compHue, hsl[1], Math.min(hsl[2] + 15, 85)), // Hell
+            hslToHex(compHue, hsl[1], hsl[2]),                   // Basis
+            hslToHex(compHue, hsl[1], Math.max(hsl[2] - 15, 15)), // Dunkel
+            hslToHex((hsl[0] + 30) % 360, hsl[1], hsl[2]),        // Analog +
+            hslToHex((hsl[0] - 30) % 360, hsl[1], hsl[2])         // Analog -
         ];
 
         palette.forEach(color => {
             const swatch = document.createElement('div');
             swatch.className = 'swatch';
             swatch.style.backgroundColor = color;
-            swatch.textContent = color;
-            paletteGrid.appendChild(swatch);
+            swatch.innerHTML = `<span>Code:</span> <span>${color}</span>`;
+            paletteList.appendChild(swatch);
         });
     }
 
-    let dragging = false;
-    canvas.addEventListener('mousedown', (e) => { dragging = true; updateColors(e); });
-    window.addEventListener('mousemove', (e) => { if (dragging) updateColors(e); });
-    window.addEventListener('mouseup', () => dragging = false);
+    // Touch & Mouse Events
+    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleInteraction(e); });
+    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); handleInteraction(e); });
+    canvas.addEventListener('mousedown', (e) => { 
+        const move = (ev) => handleInteraction(ev);
+        const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
+        window.addEventListener('mousemove', move);
+        window.addEventListener('mouseup', up);
+        handleInteraction(e);
+    });
 
-    drawPicker();
+    window.onload = setupCanvas;
+    window.onresize = setupCanvas;
 </script>
 
 </body>
