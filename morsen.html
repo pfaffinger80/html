@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Interaktiver Morse Code Generator mit LED Blitz</title>
+    <style>
+        :root {
+            --bg-color: #4a5a3a;
+            --pcb-bg: #11171d;
+            --trace: #d6deda;
+            --pad-idle: #576d3e;
+            --pad-active: #ff3b3b;
+            --pad-glow: rgba(255, 59, 59, 0.8);
+            --text-color: #d6deda;
+            --touch-target: rgba(255, 255, 255, 0);
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image: radial-gradient(circle, #5b7049 0%, #2f3b25 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: 'Segoe UI', Roboto, Helvetica, sans-serif;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+
+        .pcb-board {
+            background-color: var(--pcb-bg);
+            border: 3px solid #b0b0b0;
+            border-radius: 12px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.6), inset 0 0 20px rgba(0,0,0,0.5);
+            width: 440px;
+            height: 580px;
+            position: relative;
+            margin-bottom: 30px;
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+            margin-top: 5px;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .trace {
+            fill: none;
+            stroke: var(--trace);
+            stroke-width: 2;
+        }
+
+        .node-rect {
+            fill: var(--pad-idle);
+            stroke: var(--trace);
+            stroke-width: 1.5;
+            transition: all 0.1s;
+            cursor: pointer;
+        }
+
+        .node-circle {
+            fill: var(--pad-idle);
+            stroke: var(--trace);
+            stroke-width: 1.5;
+            transition: all 0.1s;
+            cursor: pointer;
+        }
+
+        /* Größere Touch-Ziele für bessere Bedienbarkeit */
+        .node .touch-target {
+            fill: var(--touch-target);
+            stroke: none;
+            cursor: pointer;
+            pointer-events: all;
+        }
+
+        .label {
+            fill: var(--text-color);
+            font-size: 20px;
+            pointer-events: none;
+        }
+
+        .node.active .node-rect,
+        .node.active .node-circle {
+            fill: var(--pad-active);
+            stroke: var(--pad-active);
+            filter: drop-shadow(0 0 8px var(--pad-glow));
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            width: 100%;
+        }
+
+        .screen {
+            background-color: #000;
+            border: 3px solid #333;
+            border-radius: 8px;
+            width: 400px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+        }
+
+        .screen-top {
+            color: #0f0;
+            font-size: 24px;
+            font-family: monospace;
+            min-height: 28px;
+            letter-spacing: 5px;
+            margin-bottom: 5px;
+            text-shadow: 0 0 5px #0f0;
+            word-break: break-all;
+            text-align: center;
+        }
+
+        .screen-bottom {
+            color: #fff;
+            font-size: 18px;
+            font-family: monospace;
+            min-height: 22px;
+            word-break: break-all;
+            text-align: center;
+        }
+
+        #morse-btn {
+            background: linear-gradient(145deg, #ff4040, #cc0000);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 20px 80px;
+            font-size: 28px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            cursor: pointer;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.4), inset 0 -4px 10px rgba(0,0,0,0.2);
+            transition: transform 0.05s, box-shadow 0.05s;
+            outline: none;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+
+        #morse-btn:active, .btn-pressed {
+            transform: translateY(6px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.4), inset 0 4px 10px rgba(0,0,0,0.3);
+            background: #cc0000 !important;
+        }
+
+        .controls-row {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn-small {
+            background: #333;
+            color: #ccc;
+            border: 1px solid #555;
+            padding: 12px 24px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.1s;
+            touch-action: manipulation;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+        
+        .btn-small:active {
+            transform: scale(0.96);
+            background: #222;
+        }
+        
+        .btn-led {
+            background: #0a4c6e;
+            border-color: #2ba0e0;
+            color: white;
+            text-shadow: 0 0 2px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .btn-led:active {
+            background: #0a6b9a;
+        }
+        
+        .led-indicator {
+            width: 14px;
+            height: 14px;
+            background-color: #ffff00;
+            border-radius: 50%;
+            box-shadow: 0 0 4px #ffcc00;
+            display: inline-block;
+            transition: all 0.05s;
+        }
+        
+        .led-active {
+            background-color: #ffaa00;
+            box-shadow: 0 0 12px #ffcc44;
+        }
+
+        /* Feedback für Buchstaben-Touch */
+        .node.touched .node-rect,
+        .node.touched .node-circle {
+            fill: #ff6b6b;
+            transition: fill 0.15s;
+        }
+        
+        @media (max-width: 480px) {
+            .pcb-board {
+                width: 95vw;
+                height: auto;
+                aspect-ratio: 440 / 580;
+            }
+            .screen {
+                width: 90vw;
+            }
+            .btn-small {
+                padding: 10px 18px;
+                font-size: 14px;
+            }
+            #morse-btn {
+                padding: 16px 60px;
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="pcb-board">
+        <svg viewBox="0 0 440 580" preserveAspectRatio="xMidYMid meet">
+            <path class="trace" d="M220,70 L220,120" />
+            <path class="trace" d="M205,50 L220,70 L235,50" />
+            <path class="trace" d="M220,70 L220,50" />
+
+            <path class="trace" d="M40,120 L400,120" />
+            <path class="trace" d="M100,120 L100,240" />
+            <path class="trace" d="M100,180 L40,180" />
+            <path class="trace" d="M160,120 L160,480" />
+            <path class="trace" d="M160,300 L40,300" />
+            <path class="trace" d="M100,300 L100,360" />
+            <path class="trace" d="M160,420 L100,420" />
+            <path class="trace" d="M280,120 L280,480" />
+            <path class="trace" d="M280,300 L400,300" />
+            <path class="trace" d="M280,420 L340,420" />
+            <path class="trace" d="M340,120 L340,240" />
+            <!-- Neue Verbindung von S zu V -->
+            <path class="trace" d="M400,120 L400,172" />
+            <!-- Verbindung von H zu S -->
+            <path class="trace" d="M435,120 L400,120" />
+
+            <!-- O -->
+            <g class="node" data-morse="---" data-letter="O">
+                <rect class="node-rect" x="25" y="112" width="30" height="16" rx="2"/>
+                <rect class="touch-target" x="15" y="100" width="50" height="40" rx="5"/>
+                <text class="label" x="30" y="100">O</text>
+            </g>
+
+            <!-- M -->
+            <g class="node" data-morse="--" data-letter="M">
+                <rect class="node-rect" x="85" y="112" width="30" height="16" rx="2"/>
+                <rect class="touch-target" x="75" y="100" width="50" height="40" rx="5"/>
+                <text class="label" x="90" y="100">M</text>
+            </g>
+
+            <!-- T -->
+            <g class="node" data-morse="-" data-letter="T">
+                <rect class="node-rect" x="145" y="112" width="30" height="16" rx="2"/>
+                <rect class="touch-target" x="135" y="100" width="50" height="40" rx="5"/>
+                <text class="label" x="154" y="100">T</text>
+            </g>
+
+            <!-- Q -->
+            <g class="node" data-morse="--.-" data-letter="Q">
+                <rect class="node-rect" x="25" y="172" width="30" height="16" rx="2"/>
+                <rect class="touch-target" x="15" y="160" width="50" height="40" rx="5"/>
+                <text class="label" x="32" y="210">Q</text>
+            </g>
+
+            <!-- G -->
+            <g class="node" data-morse="--." data-letter="G">
+                <circle class="node-circle" cx="100" cy="180" r="9"/>
+                <circle class="touch-target" cx="100" cy="180" r="25" fill="var(--touch-target)"/>
+                <text class="label" x="115" y="186">G</text>
+            </g>
+
+            <!-- Z -->
+            <g class="node" data-morse="--.." data-letter="Z">
+                <circle class="node-circle" cx="100" cy="240" r="9"/>
+                <circle class="touch-target" cx="100" cy="240" r="25" fill="var(--touch-target)"/>
+                <text class="label" x="115" y="246">Z</text>
+            </g>
+
+            <!-- Y -->
+            <g class="node" data-morse="-.--" data-letter="Y">
+                <rect class="node-rect" x="25" y="292" width="30" height="16" rx="2"/>
+                <rect class="touch-target" x="15" y="280" width="50" height="40" rx="5"/>
+                <text class="label" x="32" y="280">Y</text>
+            </g>
+
+            <!-- K -->
+            <g class="node" data-morse="-.-" data-letter="K">
+                <rect class="node-rect" x="85" y="292" width="30" height="16" rx="2"/>
+                <rect class="touch-target" x="75" y="280" width="50" height="40" rx="5"/>
+                <text class="label" x="92" y="280">K</text>
+            </g>
+
+            <!-- C -->
+            <g class="node" data-morse="-.-." data-letter="C">
+                <circle class="node-circle" cx="100" cy="360" r="9"/>
+                <circle class="touch-target" cx="100" cy="360" r="25" fill="var(--touch-target)"/>
+                <text class="label" x="115" y="366">C</text>
+            </g>
+
+            <!-- N -->
+            <g class="node" data-morse="-." data-letter="N">
+                <circle class="node-circle" cx="160" cy="300" r="9"/>
+                <circle class="touch-target" cx="160" cy="300" r="25" fill="var(--touch-target)"/>
+                <text class="label" x="175" y="290">N</text>
+            </g>
+
+            <!-- X -->
+            <g class="node" data-morse="-..-" data-letter="X">
+                <rect class="node-rect" x="85" y="412" width="30" height="16" rx="2"/>
+                <rect class="touch-target" x="75" y="400" width="50" height="40" rx="5"/>
+                <text class="label" x="65" y="426">X</text>
+            </g>
+
+            <!-- D -->
+            <g class="node" data-morse="-.." data-letter="D">
+                <circle class="node-circle" cx="160" cy="420" r="9"/>
+                <circle class="touch-target" cx="160" cy="420" r="25" fill="var(--touch-target)"/>
+                <text class="label" x="175" y="410">D</text>
+            </g>
+
+            <!-- B -->
+            <g class="node" data-morse="-..." data-letter="B">
+                <circle class="node-circle" cx="160" cy="480" r="9"/>
+                <circle class="touch-target" cx="160" cy="480" r="25" fill="var(--touch-target)"/>
+                <text class="label" x="135" y="486">B</text>
+            </g>
+
+            <!-- E -->
+            <g class="node" data-morse="." data-letter="E">
+                <circle class="node-circle" cx="280" cy="120" r="9"/>
+                <circle class="touch-target" cx="280" cy="120" r="25" fill="var(--touch-target)"/>
+                <text class="label" x="272" y="100">E</text>
+            </g>
+
+            <!-- I -->
+            <g class="node" data-morse=".." data-letter="I">
+                <circle class="node-circle" cx="340" cy="120" r="9"/>
+                <circle class="touch-target" cx="340" cy="120" r="25" fill="var(--touch-target)"/>
+                <text class="label" x="335" y="100">I</text>
+            </g>
+
+            <!-- S -->
+            <g class="node" data-morse="..." data-letter="S">
+                <circle class="node-circle" cx="400" cy="120" r="9"/>
+                <circle class="touch-target" cx="400" cy="120" r="25" fill="var(--touch-target)"/>
+                <text class="label" x="390" y="100">S</text>
+            </g>
+
+            <!-- H -->
+            <g class="node" data-morse="...." data-letter="H">
+                <circle class="node-circle" cx="435" cy="120" r="9"/>
+                <circle class="touch-target" cx="435" cy="120" r="25" fill="var(--touch-target)"/>
+                <text class="label" x="425" y="100">H</text>
+            </g>
+
+            <!-- U -->
+            <g class="node" data-morse="..-" data-letter="U">
+                <rect class="node-rect" x="325" y="172" width="30" height="16" rx="2"/>
+                <rect class="touch-target" x="315" y="160" width="50" height="40" rx="5"/>
+                <text class="label" x="300" y="186">U</text>
+            </g>
+
+            <!-- V -->
+            <g class="node" data-morse="...-" data-letter="V">
+                <rect class="node-rect" x="385" y="172" width="30" height="16" rx="2"/>
+                <rect class="touch-target" x="375" y="160" width="50" height="40" rx="5"/>
+                <text class="label" x="420" y="186">V</text>
+            </g>
+
+            <!-- F -->
+            <g class="node" data-morse="..-." data-letter="F">
+                <circle class="node-circle" cx="340" cy="240" r="9"/>
+                <circle class="touch-target" cx="340" cy="240" r="25" fill="var(--touch-target)"/>
+                <text class="label" x="355" y="246">F</text>
+            </g>
+
+            <!-- A -->
+            <g class="node" data-morse=".-" data-letter="A">
+                <rect class="node-rect" x="265" y="292" width="30" height="16" rx="2"/>
+                <rect class="touch-target" x="255" y="280" width="50" height="40" rx="5"/>
+                <text class="label" x="245" y="316">A</text>
+            </g>
+
+            <!-- R -->
+            <g class="node" data-morse=".-." data-letter="R">
+                <circle class="node-circle" cx="340" cy="300" r="9"/>
+                <circle class="touch-target" cx="340" cy="300" r="25" fill="var(--touch-target)"/>
+                <text class="label" x="333" y="325">R</text>
+            </g>
+
+            <!-- L -->
+            <g class="node" data-morse=".-.." data-letter="L">
+                <circle class="node-circle" cx="400" cy="300" r="9"/>
+                <circle class="touch-target" cx="400" cy="300" r="25" fill="var(--touch-target)"/>
+                <text class="label" x="415" y="306">L</text>
+            </g>
+
+            <!-- W -->
+            <g class="node" data-morse=".--" data-letter="W">
+                <rect class="node-rect" x="265" y="412" width="30" height="16" rx="2"/>
+                <rect class="touch-target" x="255" y="400" width="50" height="40" rx="5"/>
+                <text class="label" x="240" y="426">W</text>
+            </g>
+
+            <!-- P -->
+            <g class="node" data-morse=".--." data-letter="P">
+                <circle class="node-circle" cx="340" cy="420" r="9"/>
+                <circle class="touch-target" cx="340" cy="420" r="25" fill="var(--touch-target)"/>
+                <text class="label" x="355" y="426">P</text>
+            </g>
+
+            <!-- J -->
+            <g class="node" data-morse=".---" data-letter="J">
+                <rect class="node-rect" x="265" y="472" width="30" height="16" rx="2"/>
+                <rect class="touch-target" x="255" y="460" width="50" height="40" rx="5"/>
+                <text class="label" x="305" y="486">J</text>
+            </g>
+        </svg>
+    </div>
+
+    <div class="controls">
+        <div class="screen">
+            <div id="morse-display" class="screen-top">_</div>
+            <div id="text-display" class="screen-bottom"></div>
+        </div>
+        
+        <button id="morse-btn">MORSE</button>
+        
+        <div class="controls-row">
+            <button id="clear-btn" class="btn-small">Text löschen</button>
+            <button id="led-blink-btn" class="btn-small btn-led">💡 LED morsen</button>
+        </div>
+    </div>
+
+    <script>
+        // --- Web Audio API für den Morse-Piepton ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let oscillator;
+        let gainNode;
+
+        function startTone() {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            if(oscillator) {
+                try { oscillator.stop(); } catch(e) {}
+            }
+            oscillator = audioCtx.createOscillator();
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(650, audioCtx.currentTime);
+            
+            gainNode = audioCtx.createGain();
+            gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            oscillator.start();
+        }
+
+        function stopTone() {
+            if (gainNode) {
+                gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.015);
+                setTimeout(() => { if(oscillator) { try { oscillator.stop(); } catch(e) {} oscillator = null; } }, 50);
+            }
+        }
+
+        // --- LED Steuerung via Torch API (iPhone 13 / moderne Geräte) ---
+        let torchSupported = false;
+        let torchInstance = null;
+        
+        // Initialisieren der Taschenlampen-API
+        async function initTorch() {
+            if ('Torch' in window || ('navigator' in window && 'barcode' in navigator)) {
+                // moderner Ansatz: via MediaDevices
+            }
+            // Prüfe ob getUserMedia verfügbar ist (Torch via Video Track)
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                    const track = stream.getVideoTracks()[0];
+                    if (track && track.getCapabilities && track.getCapabilities().torch) {
+                        torchSupported = true;
+                        torchInstance = track;
+                        // Stream nicht stoppen, wir behalten track für torch
+                        // Aber wir müssen den Stream leise halten, da wir kein Video anzeigen
+                        // Track referenziert halten
+                    } else {
+                        // Fallback: Versuch mit ImageCapture?
+                        if (track) track.stop();
+                        torchSupported = false;
+                    }
+                } catch (err) {
+                    console.warn("Torch nicht verfügbar oder Berechtigung fehlt:", err);
+                    torchSupported = false;
+                }
+            }
+            
+            // Fallback für einige Browser mit älterer Implementierung
+            if (!torchSupported && window.Torch && typeof window.Torch.enable === 'function') {
+                torchSupported = true;
+                torchInstance = window.Torch;
+            }
+        }
+        
+        async function torchOn() {
+            if (!torchSupported) {
+                // Versuch erneut zu initialisieren
+                await initTorch();
+                if (!torchSupported) return false;
+            }
+            try {
+                if (torchInstance && typeof torchInstance.applyConstraints === 'function') {
+                    await torchInstance.applyConstraints({ advanced: [{ torch: true }] });
+                    return true;
+                } else if (torchInstance && typeof torchInstance.enable === 'function') {
+                    torchInstance.enable();
+                    return true;
+                } else {
+                    return false;
+                }
+            } catch(e) {
+                console.warn("Torch einschalten fehlgeschlagen", e);
+                return false;
+            }
+        }
+        
+        async function torchOff() {
+            if (!torchSupported) return false;
+            try {
+                if (torchInstance && typeof torchInstance.applyConstraints === 'function') {
+                    await torchInstance.applyConstraints({ advanced: [{ torch: false }] });
+                    return true;
+                } else if (torchInstance && typeof torchInstance.disable === 'function') {
+                    torchInstance.disable();
+                    return true;
+                }
+                return false;
+            } catch(e) {
+                return false;
+            }
+        }
+        
+        // LED blinken für Morse-Code mit Zeitsteuerung (Dit = 100ms, Dah = 300ms, Pause = 100ms, Buchstabenpause 300ms, Wortpause 700ms)
+        // Wir verwenden Standard-Morse Timing: Dit 100ms, Dah 300ms, Pause zwischen Symbolen 100ms, zwischen Buchstaben 300ms, zwischen Wörtern 700ms
+        
+        let ledBlinkActive = false;
+        let ledTimeoutQueue = [];
+        
+        function clearLedTimeouts() {
+            for (let tid of ledTimeoutQueue) {
+                clearTimeout(tid);
+            }
+            ledTimeoutQueue = [];
+            if (torchSupported) torchOff();
+            ledBlinkActive = false;
+        }
+        
+        async function blinkMorsePattern(morseString) {
+            if (ledBlinkActive) {
+                alert("LED blinkt gerade, bitte warten...");
+                return;
+            }
+            if (!torchSupported) {
+                // Prüfe Berechtigung erneut anfordern
+                await initTorch();
+                if (!torchSupported) {
+                    alert("Taschenlampe nicht verfügbar. Bitte erlaube den Zugriff auf die Kamera (für die LED) in den Browsereinstellungen.\n\nHinweis: Auf iOS benötigt die Seite die Kameraerlaubnis für die LED-Steuerung.");
+                    return;
+                }
+            }
+            
+            // Berechtigung sicherstellen: Nutzer muss Kamera erlauben
+            if (!torchInstance) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                    const track = stream.getVideoTracks()[0];
+                    if (track && track.getCapabilities && track.getCapabilities().torch) {
+                        torchInstance = track;
+                        torchSupported = true;
+                    } else {
+                        alert("LED-Steuerung nicht unterstützt (keine Torch-Fähigkeit)");
+                        track?.stop();
+                        return;
+                    }
+                } catch(err) {
+                    alert("Zugriff auf Kamera verweigert oder nicht möglich. Bitte erlaube den Kamerazugriff für die LED-Funktion.");
+                    return;
+                }
+            }
+            
+            ledBlinkActive = true;
+            
+            const symbols = morseString.split('');
+            const DIT_DUR = 120;      // Punkt 120ms
+            const DAH_DUR = 360;      // Strich 360ms
+            const SYMBOL_PAUSE = 120; // Pause zwischen Symbolen
+            const LETTER_PAUSE = 360; // Pause zwischen Buchstaben (ursprünglich 3 Einheiten)
+            
+            let currentTime = 0;
+            
+            for (let i = 0; i < symbols.length; i++) {
+                const sym = symbols[i];
+                const isLastSymbol = i === symbols.length - 1;
+                const duration = sym === '.' ? DIT_DUR : (sym === '-' ? DAH_DUR : 0);
+                
+                if (duration > 0) {
+                    // LED einschalten
+                    const timeoutOn = setTimeout(async () => {
+                        await torchOn();
+                        // Visuelles Feedback im Button kurz aufhellen
+                        const ledBtn = document.getElementById('led-blink-btn');
+                        if (ledBtn) ledBtn.style.opacity = '0.8';
+                    }, currentTime);
+                    ledTimeoutQueue.push(timeoutOn);
+                    
+                    // LED ausschalten nach Dauer
+                    const timeoutOff = setTimeout(async () => {
+                        await torchOff();
+                        const ledBtn = document.getElementById('led-blink-btn');
+                        if (ledBtn) ledBtn.style.opacity = '1';
+                    }, currentTime + duration);
+                    ledTimeoutQueue.push(timeoutOff);
+                    
+                    // nächste Startzeit
+                    currentTime += duration;
+                }
+                
+                // Pause nach Symbol (außer nach letztem Zeichen)
+                if (!isLastSymbol) {
+                    currentTime += SYMBOL_PAUSE;
+                } else {
+                    // nach letztem Symbol: Pause zwischen Buchstaben ? wir wissen nicht, obs Wortende ist -> wird in commit automatisch per Leerzeichen behandelt.
+                }
+            }
+            
+            // Nach dem gesamten Morse-Code: nach 200ms LED ausschalten zur Sicherheit
+            const finalOff = setTimeout(async () => {
+                await torchOff();
+                ledBlinkActive = false;
+                const ledBtn = document.getElementById('led-blink-btn');
+                if (ledBtn) ledBtn.style.opacity = '1';
+            }, currentTime + 200);
+            ledTimeoutQueue.push(finalOff);
+        }
+        
+        // --- Logik für die Eingabe ---
+        const DIT_THRESHOLD = 280;
+        const LETTER_TIMEOUT = 700;
+        
+        let pressStart = 0;
+        let currentSequence = "";
+        let finalSentence = "";
+        let timeoutId = null;
+
+        const btn = document.getElementById("morse-btn");
+        const displayMorse = document.getElementById("morse-display");
+        const displayText = document.getElementById("text-display");
+        const allNodes = document.querySelectorAll(".node");
+
+        const morseToChar = {
+            '.-': 'A', '-...': 'B', '-.-.': 'C', '-..': 'D', '.': 'E',
+            '..-.': 'F', '--.': 'G', '....': 'H', '..': 'I', '.---': 'J',
+            '-.-': 'K', '.-..': 'L', '--': 'M', '-.': 'N', '---': 'O',
+            '.--.': 'P', '--.-': 'Q', '.-.': 'R', '...': 'S', '-': 'T',
+            '..-': 'U', '...-': 'V', '.--': 'W', '-..-': 'X', '-.--': 'Y', '--..': 'Z'
+        };
+
+        // Touch / Maus für Buchstaben-Nodes
+        allNodes.forEach(node => {
+            const touchTarget = node.querySelector('.touch-target');
+            if (touchTarget) {
+                touchTarget.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleLetterTouch(node);
+                });
+                touchTarget.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleLetterTouch(node);
+                });
+            }
+        });
+
+        function handleLetterTouch(node) {
+            const letter = node.getAttribute('data-letter');
+            if (letter) {
+                node.classList.add('touched');
+                setTimeout(() => node.classList.remove('touched'), 150);
+                finalSentence += letter;
+                displayText.innerText = finalSentence;
+                const morseCode = node.getAttribute('data-morse');
+                currentSequence = morseCode;
+                displayMorse.innerText = currentSequence;
+                updateUI();
+                
+                clearTimeout(timeoutId);
+                timeoutId = setTimeout(() => {
+                    currentSequence = "";
+                    updateUI();
+                    timeoutId = setTimeout(() => {
+                        if(finalSentence.length > 0 && finalSentence[finalSentence.length-1] !== " ") {
+                            finalSentence += " ";
+                            displayText.innerText = finalSentence;
+                        }
+                    }, LETTER_TIMEOUT);
+                }, 500);
+            }
+        }
+
+        document.getElementById("clear-btn").addEventListener("click", () => {
+            finalSentence = "";
+            currentSequence = "";
+            displayText.innerText = "";
+            updateUI();
+        });
+        
+        // LED Morsen Button: Wandelt aktuellen angezeigten Text (finalSentence) in Morsecode um und sendet LED-Blitze
+        const ledBtn = document.getElementById("led-blink-btn");
+        ledBtn.addEventListener("click", async () => {
+            if (ledBlinkActive) {
+                alert("LED ist gerade aktiv, bitte warten...");
+                return;
+            }
+            // Prüfen ob Text vorhanden
+            let sentenceToBlink = finalSentence.trim();
+            if (sentenceToBlink === "") {
+                alert("Kein Text zum Morsen vorhanden. Tippe Buchstaben oder nutze den Morse-Taster.");
+                return;
+            }
+            // Umwandlung des gesamten Texts in Morse-Code-Sequenz (inkl. Leerzeichen als Wortpause)
+            let fullMorse = "";
+            for (let i = 0; i < sentenceToBlink.length; i++) {
+                const ch = sentenceToBlink[i].toUpperCase();
+                if (ch === ' ') {
+                    fullMorse += ' ';
+                } else {
+                    const morse = Object.keys(morseToChar).find(key => morseToChar[key] === ch);
+                    if (morse) fullMorse += morse + ' ';
+                }
+            }
+            fullMorse = fullMorse.trim();
+            if (!fullMorse) return;
+            
+            // Zusätzlich Symbol für Leerzeichen einfügen als lange Pause: wir verarbeiten das in blinkMorsePattern Simple:
+            // Erweiterte Blink-Logik: Leerzeichen werden als 700ms Pause interpretiert
+            async function blinkFullMorse(morseStr) {
+                if (ledBlinkActive) return;
+                ledBlinkActive = true;
+                const parts = morseStr.split(' ');
+                let totalBaseTime = 0;
+                let timeouts = [];
+                const DIT = 120;
+                const DAH = 360;
+                const SYM_PAUSE = 120;
+                const WORD_PAUSE = 700;
+                
+                let currentDelay = 0;
+                for (let idx = 0; idx < parts.length; idx++) {
+                    const part = parts[idx];
+                    if (part === "") continue;
+                    const symbols = part.split('');
+                    for (let s = 0; s < symbols.length; s++) {
+                        const sym = symbols[s];
+                        const dur = sym === '.' ? DIT : DAH;
+                        const toTimeout = setTimeout(async () => { await torchOn(); }, currentDelay);
+                        timeouts.push(toTimeout);
+                        const offTimeout = setTimeout(async () => { await torchOff(); }, currentDelay + dur);
+                        timeouts.push(offTimeout);
+                        currentDelay += dur;
+                        if (s !== symbols.length - 1) currentDelay += SYM_PAUSE;
+                    }
+                    // Pause zwischen Buchstaben (nach jedem Teil)
+                    if (idx !== parts.length - 1) {
+                        currentDelay += WORD_PAUSE; // zwischen Wörtern etwas länger
+                    } else {
+                        currentDelay += 300;
+                    }
+                }
+                const finalLedOff = setTimeout(async () => { await torchOff(); ledBlinkActive = false; }, currentDelay + 100);
+                timeouts.push(finalLedOff);
+                ledTimeoutQueue.push(...timeouts);
+                setTimeout(() => ledBlinkActive = false, currentDelay + 500);
+            }
+            
+            await blinkFullMorse(fullMorse);
+        });
+
+        function handlePressDown() {
+            if(pressStart !== 0) return;
+            pressStart = Date.now();
+            clearTimeout(timeoutId);
+            startTone();
+            btn.classList.add("btn-pressed");
+        }
+
+        function handlePressUp() {
+            if (pressStart === 0) return;
+            const duration = Date.now() - pressStart;
+            pressStart = 0;
+            stopTone();
+            btn.classList.remove("btn-pressed");
+
+            if (duration < DIT_THRESHOLD) {
+                currentSequence += ".";
+            } else {
+                currentSequence += "-";
+            }
+            updateUI();
+
+            timeoutId = setTimeout(() => {
+                commitLetter();
+            }, LETTER_TIMEOUT);
+        }
+
+        function updateUI() {
+            displayMorse.innerText = currentSequence || "_";
+            allNodes.forEach(n => n.classList.remove("active"));
+            let pathBuilder = "";
+            for (let i = 0; i < currentSequence.length; i++) {
+                pathBuilder += currentSequence[i];
+                let nodeToLight = document.querySelector(`[data-morse="${pathBuilder}"]`);
+                if (nodeToLight) nodeToLight.classList.add("active");
+            }
+        }
+
+        function commitLetter() {
+            if (!currentSequence) return;
+            const letter = morseToChar[currentSequence] || "?";
+            finalSentence += letter;
+            displayText.innerText = finalSentence;
+            currentSequence = "";
+            updateUI();
+            timeoutId = setTimeout(() => {
+                if(finalSentence.length > 0 && finalSentence[finalSentence.length-1] !== " ") {
+                    finalSentence += " ";
+                    displayText.innerText = finalSentence;
+                }
+            }, LETTER_TIMEOUT);
+        }
+        
+        btn.addEventListener("mousedown", handlePressDown);
+        btn.addEventListener("touchstart", (e) => { e.preventDefault(); handlePressDown(); });
+        window.addEventListener("mouseup", handlePressUp);
+        window.addEventListener("touchend", handlePressUp);
+        
+        initTorch();
+    </script>
+</body>
+</html>
