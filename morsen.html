@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Morse Code Generator – Codes hintereinander</title>
+    <title>Morse Code Generator</title>
     <style>
         :root {
             --bg-color: #4a5a3a;
@@ -16,6 +16,11 @@
             --touch-target: rgba(255, 255, 255, 0);
         }
 
+        * {
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
         body {
             background-color: var(--bg-color);
             background-image: radial-gradient(circle, #5b7049 0%, #2f3b25 100%);
@@ -26,8 +31,24 @@
             min-height: 100vh;
             margin: 0;
             font-family: 'Segoe UI', Roboto, Helvetica, sans-serif;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Flash-Overlay für Taschenlampen-Effekt */
+        .flash-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: white;
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.01s ease;
+        }
+
+        .flash-overlay.active {
+            opacity: 0.95;
         }
 
         .pcb-board {
@@ -171,6 +192,12 @@
             border-radius: 5px;
             cursor: pointer;
             font-size: 16px;
+            transition: all 0.1s;
+        }
+
+        .btn-small:active {
+            transform: scale(0.96);
+            background: #444;
         }
 
         .node.touched .node-rect,
@@ -185,9 +212,20 @@
             margin-top: 5px;
             font-family: monospace;
         }
+
+        /* Morsing-Status */
+        .morsing-status {
+            font-size: 12px;
+            color: #ffaa00;
+            margin-top: 5px;
+            font-family: monospace;
+            min-height: 18px;
+        }
     </style>
 </head>
 <body>
+
+    <div class="flash-overlay" id="flashOverlay"></div>
 
     <div class="pcb-board">
         <svg viewBox="15 165 440 220">
@@ -345,14 +383,18 @@
         <div class="screen">
             <div id="morse-display" class="screen-top">_</div>
             <div id="text-display" class="screen-bottom"></div>
+            <div id="morsing-status" class="morsing-status"></div>
+            
         </div>
         <button id="morse-btn">MORSE</button>
         <div class="controls-row">
+            <button id="morse-text-btn" class="btn-small">🔦 Text morsen</button>
             <button id="clear-btn" class="btn-small">Text löschen</button>
         </div>
     </div>
 
     <script>
+        // --- Audio Context für Piepton ---
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         let oscillator, gainNode;
 
@@ -375,13 +417,106 @@
             }
         }
 
+        // --- Taschenlampe (Flash-Overlay) ---
+        const flashOverlay = document.getElementById('flashOverlay');
+        let isMorsing = false;
+        let morsingAborted = false;
+
+        function flashLight(durationMs) {
+            return new Promise((resolve) => {
+                flashOverlay.classList.add('active');
+                setTimeout(() => {
+                    flashOverlay.classList.remove('active');
+                    setTimeout(resolve, 10);
+                }, durationMs);
+            });
+        }
+
+        // --- Morsecode-Zeiten (in ms) ---
+        const DOT_TIME = 150;
+        const DASH_TIME = 450;
+        const SYMBOL_PAUSE = 150;    // Pause zwischen Punkten/Strichen eines Buchstabens
+        const LETTER_PAUSE = 450;     // Pause zwischen Buchstaben
+        const WORD_PAUSE = 1050;      // Pause zwischen Wörtern (wird bei Leerzeichen verwendet)
+
+        // Buchstabe -> Morsecode (Punkte/Striche)
+        const charToMorse = {
+            'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.', 'F': '..-.', 'G': '--.', 'H': '....',
+            'I': '..', 'J': '.---', 'K': '-.-', 'L': '.-..', 'M': '--', 'N': '-.', 'O': '---', 'P': '.--.',
+            'Q': '--.-', 'R': '.-.', 'S': '...', 'T': '-', 'U': '..-', 'V': '...-', 'W': '.--', 'X': '-..-',
+            'Y': '-.--', 'Z': '--..', ' ': ' '
+        };
+
+        async function morseWithFlash(text) {
+            if (isMorsing) return;
+            isMorsing = true;
+            morsingAborted = false;
+            const statusDiv = document.getElementById('morsing-status');
+            statusDiv.textContent = '🔦 Morset den Text...';
+            
+            const upperText = text.toUpperCase();
+            
+            for (let i = 0; i < upperText.length; i++) {
+                if (morsingAborted) break;
+                const char = upperText[i];
+                const morseCode = charToMorse[char];
+                
+                if (char === ' ') {
+                    // Wortpause
+                    statusDiv.textContent = '␣ Wortpause ...';
+                    await flashLight(50);
+                    await new Promise(r => setTimeout(r, WORD_PAUSE));
+                } else if (morseCode) {
+                    statusDiv.textContent = `📡 ${char} → ${morseCode}`;
+                    // Buchstaben morsen
+                    for (let j = 0; j < morseCode.length; j++) {
+                        if (morsingAborted) break;
+                        const symbol = morseCode[j];
+                        if (symbol === '.') {
+                            await flashLight(DOT_TIME);
+                        } else if (symbol === '-') {
+                            await flashLight(DASH_TIME);
+                        }
+                        // Pause zwischen Symbolen (außer nach letztem Symbol)
+                        if (j < morseCode.length - 1 && !morsingAborted) {
+                            await new Promise(r => setTimeout(r, SYMBOL_PAUSE));
+                        }
+                    }
+                    // Pause zwischen Buchstaben (außer nach letztem Buchstaben)
+                    if (i < upperText.length - 1 && upperText[i+1] !== ' ' && !morsingAborted) {
+                        await new Promise(r => setTimeout(r, LETTER_PAUSE));
+                    }
+                }
+            }
+            
+            if (!morsingAborted) {
+                statusDiv.textContent = '✅ Fertig gemorst!';
+                setTimeout(() => {
+                    if (statusDiv.textContent === '✅ Fertig gemorst!') statusDiv.textContent = '';
+                }, 2000);
+            } else {
+                statusDiv.textContent = '⛔ Morsen abgebrochen';
+                setTimeout(() => {
+                    if (statusDiv.textContent === '⛔ Morsen abgebrochen') statusDiv.textContent = '';
+                }, 1500);
+            }
+            isMorsing = false;
+        }
+
+        function abortMorsing() {
+            if (isMorsing) {
+                morsingAborted = true;
+            }
+        }
+
+        // --- Haupt-Logik für die Eingabe (wie gehabt, aber mit Abbruch bei Morsen) ---
         const DIT_THRESHOLD = 250;
         const LETTER_TIMEOUT = 700;
         
         let pressStart = 0;
-        let currentMorseInput = "";        // Aktuelle Eingabe für einen Buchstaben (während des Morsens)
-        let fullMorseSequence = "";         // Alle bereits fertigen Morse-Codes mit Leerzeichen getrennt
-        let fullText = "";                  // Klartext mit Buchstaben
+        let currentMorseInput = "";
+        let fullMorseSequence = "";
+        let fullText = "";
         let timeoutId = null;
         let spaceTimeout = null;
 
@@ -398,16 +533,13 @@
             '..-': 'U', '...-': 'V', '.--': 'W', '-..-': 'X', '-.--': 'Y', '--..': 'Z'
         };
 
-        // Aktualisiert die Morse-Anzeige
         function updateMorseDisplay() {
-            // Wenn eine aktuelle Eingabe vorhanden ist, zeige sie in eckigen Klammern als Vorschau
             if (currentMorseInput && currentMorseInput.length > 0) {
                 if (fullMorseSequence.length > 0) {
                     displayMorse.innerText = fullMorseSequence + " [" + currentMorseInput + "]";
                 } else {
                     displayMorse.innerText = "[" + currentMorseInput + "]";
                 }
-                // Pfadbeleuchtung für die Teilsequenz
                 allNodes.forEach(n => n.classList.remove("active"));
                 let builder = "";
                 for (let i = 0; i < currentMorseInput.length; i++) {
@@ -425,24 +557,19 @@
             }
         }
 
-        // Fügt einen fertigen Buchstaben hinzu
         function addLetterWithCode(letter, morseCode) {
-            // Buchstaben zum Klartext hinzufügen
             fullText += letter;
             displayText.innerText = fullText;
             
-            // Morse-Code zur Gesamtsequenz hinzufügen (mit Leerzeichen davor, wenn nicht leer)
             if (fullMorseSequence.length > 0) {
                 fullMorseSequence += " " + morseCode;
             } else {
                 fullMorseSequence = morseCode;
             }
             
-            // Aktuelle Eingabe zurücksetzen
             currentMorseInput = "";
             updateMorseDisplay();
             
-            // Automatisches Leerzeichen im TEXT nach Buchstabe (nicht im Morse-Code!)
             if (spaceTimeout) clearTimeout(spaceTimeout);
             spaceTimeout = setTimeout(() => {
                 if (fullText.length > 0 && fullText.charAt(fullText.length - 1) !== ' ') {
@@ -453,50 +580,37 @@
             }, LETTER_TIMEOUT * 2);
         }
 
-        // Direkter Touch auf einen Buchstaben (Platine)
         function handleLetterTouch(node) {
+            if (isMorsing) {
+                abortMorsing();
+                setTimeout(() => handleLetterTouch(node), 100);
+                return;
+            }
             const letter = node.getAttribute('data-letter');
             const morseCode = node.getAttribute('data-morse');
             if (!letter || !morseCode) return;
             
-            // Visuelles Feedback
             node.classList.add('touched');
             setTimeout(() => node.classList.remove('touched'), 150);
             
-            // Falls eine manuelle Morsung gerade läuft, diese abbrechen
-            if (timeoutId) {
-                clearTimeout(timeoutId);
-                timeoutId = null;
-            }
-            // Aktuelle Eingabe zurücksetzen
+            if (timeoutId) clearTimeout(timeoutId);
             currentMorseInput = "";
-            
-            // Buchstaben und Morsecode zur Sequenz hinzufügen
             addLetterWithCode(letter, morseCode);
         }
 
-        // Von der Morsetaste: den aktuell eingegebenen Buchstaben abschließen
         function commitFromMorseButton() {
             if (!currentMorseInput) return;
-            
             const letter = morseToChar[currentMorseInput] || "?";
             const finalMorse = currentMorseInput;
-            
-            // Buchstaben zum Text hinzufügen
             fullText += letter;
             displayText.innerText = fullText;
-            
-            // Morse-Code zur Gesamtsequenz hinzufügen
             if (fullMorseSequence.length > 0) {
                 fullMorseSequence += " " + finalMorse;
             } else {
                 fullMorseSequence = finalMorse;
             }
-            
             currentMorseInput = "";
             updateMorseDisplay();
-            
-            // Automatisches Leerzeichen im TEXT
             if (spaceTimeout) clearTimeout(spaceTimeout);
             spaceTimeout = setTimeout(() => {
                 if (fullText.length > 0 && fullText.charAt(fullText.length - 1) !== ' ') {
@@ -507,9 +621,13 @@
             }, LETTER_TIMEOUT * 2);
         }
 
-        // --- MORSE-TASTE Events ---
         function handlePressDown() {
-            if (pressStart !== 0) return;
+            if (isMorsing) {
+                abortMorsing();
+                setTimeout(handlePressDown, 100);
+                return;
+            }
+            if(pressStart !== 0) return;
             pressStart = Date.now();
             clearTimeout(timeoutId);
             startTone();
@@ -523,23 +641,32 @@
             stopTone();
             btn.classList.remove("btn-pressed");
             
-            // Punkt oder Strich zur aktuellen Eingabe hinzufügen
             if (duration < DIT_THRESHOLD) {
                 currentMorseInput += ".";
             } else {
                 currentMorseInput += "-";
             }
-            
             updateMorseDisplay();
-            
             if (timeoutId) clearTimeout(timeoutId);
             timeoutId = setTimeout(() => {
                 commitFromMorseButton();
                 timeoutId = null;
             }, LETTER_TIMEOUT);
         }
-        
-        // Listener für die Morsetaste
+
+        // Text morsen (Taschenlampe)
+        document.getElementById("morse-text-btn").addEventListener("click", () => {
+            if (fullText.trim().length === 0) {
+                const statusDiv = document.getElementById('morsing-status');
+                statusDiv.textContent = '⚠️ Kein Text zum Morsen';
+                setTimeout(() => {
+                    if (statusDiv.textContent === '⚠️ Kein Text zum Morsen') statusDiv.textContent = '';
+                }, 1500);
+                return;
+            }
+            morseWithFlash(fullText);
+        });
+
         btn.addEventListener("mousedown", handlePressDown);
         btn.addEventListener("touchstart", (e) => { 
             e.preventDefault(); 
@@ -548,7 +675,6 @@
         window.addEventListener("mouseup", handlePressUp);
         window.addEventListener("touchend", handlePressUp);
         
-        // Buchstaben-Listener (Platine)
         allNodes.forEach(node => {
             const target = node.querySelector('.touch-target');
             if (target) {
@@ -565,8 +691,8 @@
             }
         });
         
-        // Clear-Button: Alles zurücksetzen
         document.getElementById("clear-btn").addEventListener("click", () => {
+            abortMorsing();
             fullText = "";
             fullMorseSequence = "";
             currentMorseInput = "";
@@ -579,7 +705,6 @@
             allNodes.forEach(n => n.classList.remove("active"));
         });
         
-        // Initiale Anzeige
         updateMorseDisplay();
     </script>
 </body>
