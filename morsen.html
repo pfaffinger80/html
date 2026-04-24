@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Interaktiver Morse Code Generator</title>
+    <title>Morse Code Generator – Codes hintereinander</title>
     <style>
         :root {
             --bg-color: #4a5a3a;
@@ -72,9 +72,8 @@
             cursor: pointer;
         }
 
-        /* Größere Touch-Ziele für bessere Bedienbarkeit */
         .node .touch-target {
-            fill: var(--touch-target);
+            fill: rgba(255,255,255,0);
             stroke: none;
             cursor: pointer;
             pointer-events: all;
@@ -115,12 +114,16 @@
 
         .screen-top {
             color: #0f0;
-            font-size: 24px;
+            font-size: 22px;
             font-family: monospace;
-            min-height: 28px;
-            letter-spacing: 5px;
-            margin-bottom: 5px;
+            min-height: 56px;
+            letter-spacing: 3px;
+            margin-bottom: 8px;
             text-shadow: 0 0 5px #0f0;
+            font-weight: bold;
+            word-break: break-all;
+            text-align: center;
+            line-height: 1.3;
         }
 
         .screen-bottom {
@@ -128,6 +131,9 @@
             font-size: 18px;
             font-family: monospace;
             min-height: 22px;
+            word-break: break-word;
+            text-align: center;
+            max-width: 100%;
         }
 
         #morse-btn {
@@ -164,13 +170,20 @@
             padding: 10px 20px;
             border-radius: 5px;
             cursor: pointer;
+            font-size: 16px;
         }
 
-        /* Feedback für Buchstaben-Touch */
         .node.touched .node-rect,
         .node.touched .node-circle {
             fill: #ff6b6b;
             transition: fill 0.15s;
+        }
+
+        .info-note {
+            color: #e0e0e0;
+            font-size: 12px;
+            margin-top: 5px;
+            font-family: monospace;
         }
     </style>
 </head>
@@ -181,7 +194,6 @@
             <path class="trace" d="M220,70 L220,120" />
             <path class="trace" d="M205,50 L220,70 L235,50" />
             <path class="trace" d="M220,70 L220,50" />
-
             <path class="trace" d="M40,120 L400,120" />
             <path class="trace" d="M100,120 L100,240" />
             <path class="trace" d="M100,180 L40,180" />
@@ -193,187 +205,134 @@
             <path class="trace" d="M280,300 L400,300" />
             <path class="trace" d="M280,420 L340,420" />
             <path class="trace" d="M340,120 L340,240" />
-            <!-- Neue Verbindung von S zu V -->
             <path class="trace" d="M400,120 L400,172" />
-            <!-- Verbindung von H zu S -->
             <path class="trace" d="M435,120 L400,120" />
 
-            <!-- O -->
             <g class="node" data-morse="---" data-letter="O">
                 <rect class="node-rect" x="25" y="112" width="30" height="16" rx="2"/>
                 <rect class="touch-target" x="15" y="100" width="50" height="40" rx="5"/>
                 <text class="label" x="30" y="100">O</text>
             </g>
-
-            <!-- M -->
             <g class="node" data-morse="--" data-letter="M">
                 <rect class="node-rect" x="85" y="112" width="30" height="16" rx="2"/>
                 <rect class="touch-target" x="75" y="100" width="50" height="40" rx="5"/>
                 <text class="label" x="90" y="100">M</text>
             </g>
-
-            <!-- T -->
             <g class="node" data-morse="-" data-letter="T">
                 <rect class="node-rect" x="145" y="112" width="30" height="16" rx="2"/>
                 <rect class="touch-target" x="135" y="100" width="50" height="40" rx="5"/>
                 <text class="label" x="154" y="100">T</text>
             </g>
-
-            <!-- Q -->
             <g class="node" data-morse="--.-" data-letter="Q">
                 <rect class="node-rect" x="25" y="172" width="30" height="16" rx="2"/>
                 <rect class="touch-target" x="15" y="160" width="50" height="40" rx="5"/>
                 <text class="label" x="32" y="210">Q</text>
             </g>
-
-            <!-- G -->
             <g class="node" data-morse="--." data-letter="G">
                 <circle class="node-circle" cx="100" cy="180" r="9"/>
-                <circle class="touch-target" cx="100" cy="180" r="25" fill="var(--touch-target)"/>
+                <circle class="touch-target" cx="100" cy="180" r="25" fill="rgba(255,255,255,0)"/>
                 <text class="label" x="115" y="186">G</text>
             </g>
-
-            <!-- Z -->
             <g class="node" data-morse="--.." data-letter="Z">
                 <circle class="node-circle" cx="100" cy="240" r="9"/>
-                <circle class="touch-target" cx="100" cy="240" r="25" fill="var(--touch-target)"/>
+                <circle class="touch-target" cx="100" cy="240" r="25" fill="rgba(255,255,255,0)"/>
                 <text class="label" x="115" y="246">Z</text>
             </g>
-
-            <!-- Y -->
             <g class="node" data-morse="-.--" data-letter="Y">
                 <rect class="node-rect" x="25" y="292" width="30" height="16" rx="2"/>
                 <rect class="touch-target" x="15" y="280" width="50" height="40" rx="5"/>
                 <text class="label" x="32" y="280">Y</text>
             </g>
-
-            <!-- K -->
             <g class="node" data-morse="-.-" data-letter="K">
                 <rect class="node-rect" x="85" y="292" width="30" height="16" rx="2"/>
                 <rect class="touch-target" x="75" y="280" width="50" height="40" rx="5"/>
                 <text class="label" x="92" y="280">K</text>
             </g>
-
-            <!-- C -->
             <g class="node" data-morse="-.-." data-letter="C">
                 <circle class="node-circle" cx="100" cy="360" r="9"/>
-                <circle class="touch-target" cx="100" cy="360" r="25" fill="var(--touch-target)"/>
+                <circle class="touch-target" cx="100" cy="360" r="25" fill="rgba(255,255,255,0)"/>
                 <text class="label" x="115" y="366">C</text>
             </g>
-
-            <!-- N -->
             <g class="node" data-morse="-." data-letter="N">
                 <circle class="node-circle" cx="160" cy="300" r="9"/>
-                <circle class="touch-target" cx="160" cy="300" r="25" fill="var(--touch-target)"/>
+                <circle class="touch-target" cx="160" cy="300" r="25" fill="rgba(255,255,255,0)"/>
                 <text class="label" x="175" y="290">N</text>
             </g>
-
-            <!-- X -->
             <g class="node" data-morse="-..-" data-letter="X">
                 <rect class="node-rect" x="85" y="412" width="30" height="16" rx="2"/>
                 <rect class="touch-target" x="75" y="400" width="50" height="40" rx="5"/>
                 <text class="label" x="65" y="426">X</text>
             </g>
-
-            <!-- D -->
             <g class="node" data-morse="-.." data-letter="D">
                 <circle class="node-circle" cx="160" cy="420" r="9"/>
-                <circle class="touch-target" cx="160" cy="420" r="25" fill="var(--touch-target)"/>
+                <circle class="touch-target" cx="160" cy="420" r="25" fill="rgba(255,255,255,0)"/>
                 <text class="label" x="175" y="410">D</text>
             </g>
-
-            <!-- B -->
             <g class="node" data-morse="-..." data-letter="B">
                 <circle class="node-circle" cx="160" cy="480" r="9"/>
-                <circle class="touch-target" cx="160" cy="480" r="25" fill="var(--touch-target)"/>
+                <circle class="touch-target" cx="160" cy="480" r="25" fill="rgba(255,255,255,0)"/>
                 <text class="label" x="135" y="486">B</text>
             </g>
-
-            <!-- E -->
             <g class="node" data-morse="." data-letter="E">
                 <circle class="node-circle" cx="280" cy="120" r="9"/>
-                <circle class="touch-target" cx="280" cy="120" r="25" fill="var(--touch-target)"/>
+                <circle class="touch-target" cx="280" cy="120" r="25" fill="rgba(255,255,255,0)"/>
                 <text class="label" x="272" y="100">E</text>
             </g>
-
-            <!-- I -->
             <g class="node" data-morse=".." data-letter="I">
                 <circle class="node-circle" cx="340" cy="120" r="9"/>
-                <circle class="touch-target" cx="340" cy="120" r="25" fill="var(--touch-target)"/>
+                <circle class="touch-target" cx="340" cy="120" r="25" fill="rgba(255,255,255,0)"/>
                 <text class="label" x="335" y="100">I</text>
             </g>
-
-            <!-- S -->
             <g class="node" data-morse="..." data-letter="S">
                 <circle class="node-circle" cx="400" cy="120" r="9"/>
-                <circle class="touch-target" cx="400" cy="120" r="25" fill="var(--touch-target)"/>
+                <circle class="touch-target" cx="400" cy="120" r="25" fill="rgba(255,255,255,0)"/>
                 <text class="label" x="390" y="100">S</text>
             </g>
-
-            <!-- H -->
             <g class="node" data-morse="...." data-letter="H">
                 <circle class="node-circle" cx="435" cy="120" r="9"/>
-                <circle class="touch-target" cx="435" cy="120" r="25" fill="var(--touch-target)"/>
+                <circle class="touch-target" cx="435" cy="120" r="25" fill="rgba(255,255,255,0)"/>
                 <text class="label" x="425" y="100">H</text>
             </g>
-
-            <!-- U -->
             <g class="node" data-morse="..-" data-letter="U">
                 <rect class="node-rect" x="325" y="172" width="30" height="16" rx="2"/>
                 <rect class="touch-target" x="315" y="160" width="50" height="40" rx="5"/>
                 <text class="label" x="300" y="186">U</text>
             </g>
-
-            <!-- V -->
             <g class="node" data-morse="...-" data-letter="V">
                 <rect class="node-rect" x="385" y="172" width="30" height="16" rx="2"/>
                 <rect class="touch-target" x="375" y="160" width="50" height="40" rx="5"/>
                 <text class="label" x="420" y="186">V</text>
             </g>
-
-            <!-- F -->
             <g class="node" data-morse="..-." data-letter="F">
                 <circle class="node-circle" cx="340" cy="240" r="9"/>
-                <circle class="touch-target" cx="340" cy="240" r="25" fill="var(--touch-target)"/>
+                <circle class="touch-target" cx="340" cy="240" r="25" fill="rgba(255,255,255,0)"/>
                 <text class="label" x="355" y="246">F</text>
             </g>
-
-            <!-- A -->
             <g class="node" data-morse=".-" data-letter="A">
                 <rect class="node-rect" x="265" y="292" width="30" height="16" rx="2"/>
                 <rect class="touch-target" x="255" y="280" width="50" height="40" rx="5"/>
                 <text class="label" x="245" y="316">A</text>
             </g>
-
-            <!-- R -->
             <g class="node" data-morse=".-." data-letter="R">
                 <circle class="node-circle" cx="340" cy="300" r="9"/>
-                <circle class="touch-target" cx="340" cy="300" r="25" fill="var(--touch-target)"/>
+                <circle class="touch-target" cx="340" cy="300" r="25" fill="rgba(255,255,255,0)"/>
                 <text class="label" x="333" y="325">R</text>
             </g>
-
-            <!-- L -->
             <g class="node" data-morse=".-.." data-letter="L">
                 <circle class="node-circle" cx="400" cy="300" r="9"/>
-                <circle class="touch-target" cx="400" cy="300" r="25" fill="var(--touch-target)"/>
+                <circle class="touch-target" cx="400" cy="300" r="25" fill="rgba(255,255,255,0)"/>
                 <text class="label" x="415" y="306">L</text>
             </g>
-
-            <!-- W -->
             <g class="node" data-morse=".--" data-letter="W">
                 <rect class="node-rect" x="265" y="412" width="30" height="16" rx="2"/>
                 <rect class="touch-target" x="255" y="400" width="50" height="40" rx="5"/>
                 <text class="label" x="240" y="426">W</text>
             </g>
-
-            <!-- P -->
             <g class="node" data-morse=".--." data-letter="P">
                 <circle class="node-circle" cx="340" cy="420" r="9"/>
-                <circle class="touch-target" cx="340" cy="420" r="25" fill="var(--touch-target)"/>
+                <circle class="touch-target" cx="340" cy="420" r="25" fill="rgba(255,255,255,0)"/>
                 <text class="label" x="355" y="426">P</text>
             </g>
-
-            <!-- J -->
             <g class="node" data-morse=".---" data-letter="J">
                 <rect class="node-rect" x="265" y="472" width="30" height="16" rx="2"/>
                 <rect class="touch-target" x="255" y="460" width="50" height="40" rx="5"/>
@@ -387,29 +346,23 @@
             <div id="morse-display" class="screen-top">_</div>
             <div id="text-display" class="screen-bottom"></div>
         </div>
-        
         <button id="morse-btn">MORSE</button>
-        
         <div class="controls-row">
             <button id="clear-btn" class="btn-small">Text löschen</button>
         </div>
     </div>
 
     <script>
-        // --- Web Audio API für den Morse-Piepton ---
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        let oscillator;
-        let gainNode;
+        let oscillator, gainNode;
 
         function startTone() {
             if(audioCtx.state === 'suspended') audioCtx.resume();
             oscillator = audioCtx.createOscillator();
             oscillator.type = 'sine';
             oscillator.frequency.setValueAtTime(650, audioCtx.currentTime);
-            
             gainNode = audioCtx.createGain();
             gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
-
             oscillator.connect(gainNode);
             gainNode.connect(audioCtx.destination);
             oscillator.start();
@@ -422,14 +375,15 @@
             }
         }
 
-        // --- Logik für die Eingabe ---
         const DIT_THRESHOLD = 250;
         const LETTER_TIMEOUT = 700;
         
         let pressStart = 0;
-        let currentSequence = "";
-        let finalSentence = "";
+        let currentMorseInput = "";        // Aktuelle Eingabe für einen Buchstaben (während des Morsens)
+        let fullMorseSequence = "";         // Alle bereits fertigen Morse-Codes mit Leerzeichen getrennt
+        let fullText = "";                  // Klartext mit Buchstaben
         let timeoutId = null;
+        let spaceTimeout = null;
 
         const btn = document.getElementById("morse-btn");
         const displayMorse = document.getElementById("morse-display");
@@ -444,81 +398,118 @@
             '..-': 'U', '...-': 'V', '.--': 'W', '-..-': 'X', '-.--': 'Y', '--..': 'Z'
         };
 
-        // Event Listener für Morse-Button
-        btn.addEventListener("mousedown", handlePressDown);
-        btn.addEventListener("touchstart", (e) => { 
-            e.preventDefault(); 
-            handlePressDown(); 
-        });
-        
-        window.addEventListener("mouseup", handlePressUp);
-        window.addEventListener("touchend", handlePressUp);
-
-        // Touch-Event Listener für alle Buchstaben-Nodes
-        allNodes.forEach(node => {
-            const touchTarget = node.querySelector('.touch-target');
-            if (touchTarget) {
-                // Touch Events
-                touchTarget.addEventListener('touchstart', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleLetterTouch(node);
-                });
-
-                // Mouse Events (für Desktop)
-                touchTarget.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleLetterTouch(node);
-                });
-            }
-        });
-
-        function handleLetterTouch(node) {
-            const letter = node.getAttribute('data-letter');
-            if (letter) {
-                // Visuelles Feedback
-                node.classList.add('touched');
-                setTimeout(() => {
-                    node.classList.remove('touched');
-                }, 150);
-
-                // Buchstaben zum Text hinzufügen
-                finalSentence += letter;
-                displayText.innerText = finalSentence;
-
-                // Morse-Code anzeigen
-                const morseCode = node.getAttribute('data-morse');
-                currentSequence = morseCode;
-                displayMorse.innerText = currentSequence;
-                updateUI();
-
-                // Nach kurzer Zeit die Anzeige zurücksetzen
-                clearTimeout(timeoutId);
-                timeoutId = setTimeout(() => {
-                    currentSequence = "";
-                    updateUI();
-                    
-                    // Automatisches Leerzeichen nach Buchstaben
-                    timeoutId = setTimeout(() => {
-                        if(finalSentence.length > 0 && finalSentence[finalSentence.length-1] !== " ") {
-                            finalSentence += " ";
-                            displayText.innerText = finalSentence;
-                        }
-                    }, LETTER_TIMEOUT * 2);
-                }, 500);
+        // Aktualisiert die Morse-Anzeige
+        function updateMorseDisplay() {
+            // Wenn eine aktuelle Eingabe vorhanden ist, zeige sie in eckigen Klammern als Vorschau
+            if (currentMorseInput && currentMorseInput.length > 0) {
+                if (fullMorseSequence.length > 0) {
+                    displayMorse.innerText = fullMorseSequence + " [" + currentMorseInput + "]";
+                } else {
+                    displayMorse.innerText = "[" + currentMorseInput + "]";
+                }
+                // Pfadbeleuchtung für die Teilsequenz
+                allNodes.forEach(n => n.classList.remove("active"));
+                let builder = "";
+                for (let i = 0; i < currentMorseInput.length; i++) {
+                    builder += currentMorseInput[i];
+                    let node = document.querySelector(`[data-morse="${builder}"]`);
+                    if (node) node.classList.add("active");
+                }
+            } else {
+                if (fullMorseSequence.length > 0) {
+                    displayMorse.innerText = fullMorseSequence;
+                } else {
+                    displayMorse.innerText = "_";
+                }
+                allNodes.forEach(n => n.classList.remove("active"));
             }
         }
 
-        document.getElementById("clear-btn").addEventListener("click", () => {
-            finalSentence = "";
-            currentSequence = "";
-            displayText.innerText = "";
-            updateUI();
-        });
+        // Fügt einen fertigen Buchstaben hinzu
+        function addLetterWithCode(letter, morseCode) {
+            // Buchstaben zum Klartext hinzufügen
+            fullText += letter;
+            displayText.innerText = fullText;
+            
+            // Morse-Code zur Gesamtsequenz hinzufügen (mit Leerzeichen davor, wenn nicht leer)
+            if (fullMorseSequence.length > 0) {
+                fullMorseSequence += " " + morseCode;
+            } else {
+                fullMorseSequence = morseCode;
+            }
+            
+            // Aktuelle Eingabe zurücksetzen
+            currentMorseInput = "";
+            updateMorseDisplay();
+            
+            // Automatisches Leerzeichen im TEXT nach Buchstabe (nicht im Morse-Code!)
+            if (spaceTimeout) clearTimeout(spaceTimeout);
+            spaceTimeout = setTimeout(() => {
+                if (fullText.length > 0 && fullText.charAt(fullText.length - 1) !== ' ') {
+                    fullText += " ";
+                    displayText.innerText = fullText;
+                }
+                spaceTimeout = null;
+            }, LETTER_TIMEOUT * 2);
+        }
 
+        // Direkter Touch auf einen Buchstaben (Platine)
+        function handleLetterTouch(node) {
+            const letter = node.getAttribute('data-letter');
+            const morseCode = node.getAttribute('data-morse');
+            if (!letter || !morseCode) return;
+            
+            // Visuelles Feedback
+            node.classList.add('touched');
+            setTimeout(() => node.classList.remove('touched'), 150);
+            
+            // Falls eine manuelle Morsung gerade läuft, diese abbrechen
+            if (timeoutId) {
+                clearTimeout(timeoutId);
+                timeoutId = null;
+            }
+            // Aktuelle Eingabe zurücksetzen
+            currentMorseInput = "";
+            
+            // Buchstaben und Morsecode zur Sequenz hinzufügen
+            addLetterWithCode(letter, morseCode);
+        }
+
+        // Von der Morsetaste: den aktuell eingegebenen Buchstaben abschließen
+        function commitFromMorseButton() {
+            if (!currentMorseInput) return;
+            
+            const letter = morseToChar[currentMorseInput] || "?";
+            const finalMorse = currentMorseInput;
+            
+            // Buchstaben zum Text hinzufügen
+            fullText += letter;
+            displayText.innerText = fullText;
+            
+            // Morse-Code zur Gesamtsequenz hinzufügen
+            if (fullMorseSequence.length > 0) {
+                fullMorseSequence += " " + finalMorse;
+            } else {
+                fullMorseSequence = finalMorse;
+            }
+            
+            currentMorseInput = "";
+            updateMorseDisplay();
+            
+            // Automatisches Leerzeichen im TEXT
+            if (spaceTimeout) clearTimeout(spaceTimeout);
+            spaceTimeout = setTimeout(() => {
+                if (fullText.length > 0 && fullText.charAt(fullText.length - 1) !== ' ') {
+                    fullText += " ";
+                    displayText.innerText = fullText;
+                }
+                spaceTimeout = null;
+            }, LETTER_TIMEOUT * 2);
+        }
+
+        // --- MORSE-TASTE Events ---
         function handlePressDown() {
-            if(pressStart !== 0) return;
+            if (pressStart !== 0) return;
             pressStart = Date.now();
             clearTimeout(timeoutId);
             startTone();
@@ -531,53 +522,65 @@
             pressStart = 0;
             stopTone();
             btn.classList.remove("btn-pressed");
-
+            
+            // Punkt oder Strich zur aktuellen Eingabe hinzufügen
             if (duration < DIT_THRESHOLD) {
-                currentSequence += ".";
+                currentMorseInput += ".";
             } else {
-                currentSequence += "-";
+                currentMorseInput += "-";
             }
-
-            updateUI();
-
+            
+            updateMorseDisplay();
+            
+            if (timeoutId) clearTimeout(timeoutId);
             timeoutId = setTimeout(() => {
-                commitLetter();
+                commitFromMorseButton();
+                timeoutId = null;
             }, LETTER_TIMEOUT);
         }
-
-        function updateUI() {
-            displayMorse.innerText = currentSequence || "_";
-
-            allNodes.forEach(n => n.classList.remove("active"));
-
-            let pathBuilder = "";
-            for (let i = 0; i < currentSequence.length; i++) {
-                pathBuilder += currentSequence[i];
-                let nodeToLight = document.querySelector(`[data-morse="${pathBuilder}"]`);
-                if (nodeToLight) {
-                    nodeToLight.classList.add("active");
-                }
+        
+        // Listener für die Morsetaste
+        btn.addEventListener("mousedown", handlePressDown);
+        btn.addEventListener("touchstart", (e) => { 
+            e.preventDefault(); 
+            handlePressDown(); 
+        });
+        window.addEventListener("mouseup", handlePressUp);
+        window.addEventListener("touchend", handlePressUp);
+        
+        // Buchstaben-Listener (Platine)
+        allNodes.forEach(node => {
+            const target = node.querySelector('.touch-target');
+            if (target) {
+                target.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleLetterTouch(node);
+                });
+                target.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleLetterTouch(node);
+                });
             }
-        }
-
-        function commitLetter() {
-            if (!currentSequence) return;
-            
-            const letter = morseToChar[currentSequence] || "?";
-            finalSentence += letter;
-            
-            displayText.innerText = finalSentence;
-            
-            currentSequence = "";
-            updateUI();
-            
-            timeoutId = setTimeout(() => {
-                if(finalSentence.length > 0 && finalSentence[finalSentence.length-1] !== " ") {
-                    finalSentence += " ";
-                    displayText.innerText = finalSentence;
-                }
-            }, LETTER_TIMEOUT * 2);
-        }
+        });
+        
+        // Clear-Button: Alles zurücksetzen
+        document.getElementById("clear-btn").addEventListener("click", () => {
+            fullText = "";
+            fullMorseSequence = "";
+            currentMorseInput = "";
+            displayText.innerText = "";
+            if (timeoutId) clearTimeout(timeoutId);
+            if (spaceTimeout) clearTimeout(spaceTimeout);
+            timeoutId = null;
+            spaceTimeout = null;
+            updateMorseDisplay();
+            allNodes.forEach(n => n.classList.remove("active"));
+        });
+        
+        // Initiale Anzeige
+        updateMorseDisplay();
     </script>
 </body>
 </html>
