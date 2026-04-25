@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Happy Birthday</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            padding: 0;
+            margin: 0;
+            box-sizing: border-box;
+            font-family: "Poppins", sans-serif;
+        }
+
+        body {
+            background-color: #fdbf00;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .card {
+            width: 640px;
+            height: 400px;
+            position: relative;
+            perspective: 1200px;
+            transition: 1s;
+        }
+
+        .card:hover {
+            transform: rotate(-5deg);
+        }
+
+        /* Das Öffnen der Karte */
+        .card:hover .outside {
+            transform: rotateY(-130deg);
+        }
+
+        .outside, .inside {
+            height: 100%;
+            width: 50%;
+            position: absolute;
+            left: 50%;
+        }
+
+        /* Innenseite der Karte */
+        .inside {
+            background: linear-gradient(to right, #e7e7e7, #ffffff 30%);
+            line-height: 1.5;
+            padding: 0 20px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 0;
+        }
+
+        /* Außenseite (Umschlag/Vorderseite) */
+        .outside {
+            transform-style: preserve-3d;
+            z-index: 1;
+            transform-origin: left;
+            transition: 2s;
+            cursor: pointer;
+        }
+
+        .front, .back {
+            height: 100%;
+            width: 100%;
+            position: absolute;
+            backface-visibility: hidden;
+        }
+
+        .front {
+            background-color: #ffffff;
+            text-align: center;
+            padding: 30px;
+        }
+
+        .front p {
+            font-size: 30px;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            color: #333;
+        }
+
+        .back {
+            transform: rotateY(180deg);
+            background: linear-gradient(to left, #e7e7e7, #ffffff 20%);
+        }
+
+        /* --- Der Kuchen-Code --- */
+        .cake {
+            width: 100%;
+            position: absolute;
+            bottom: 30px;
+            left: 0;
+        }
+
+        .top-layer, .middle-layer, .bottom-layer {
+            height: 80px;
+            width: 240px;
+            background-repeat: repeat;
+            background-size: 60px 100px;
+            background-position: 28px 0;
+            background-image: linear-gradient(
+                transparent 50px,
+                #fedbab 50px,
+                #fedbab 60px,
+                transparent 60px
+            ),
+            radial-gradient(circle at 30px 5px, #994c10 30px, #994c10 31px);
+            position: relative;
+            margin: auto;
+            border-radius: 10px 10px 0 0;
+        }
+
+        .middle-layer {
+            transform: scale(0.85);
+            top: 6px;
+        }
+
+        .top-layer {
+            transform: scale(0.7);
+            top: 26px;
+        }
+
+        /* Kerze */
+        .candle {
+            height: 45px;
+            width: 15px;
+            background: repeating-linear-gradient(
+                45deg,
+                #fd3018 0,
+                #fd3018 5px,
+                #ffa89e 5px,
+                #ffa89e 10px
+            );
+            position: absolute;
+            margin: auto;
+            left: 0;
+            right: 0;
+            bottom: 242px;
+        }
+
+        .candle:before {
+            content: "";
+            position: absolute;
+            height: 16px;
+            width: 16px;
+            background-color: #ffa500;
+            border-radius: 80% 0 55% 50% / 55% 0 80% 50%;
+            left: -0.5px;
+            top: -14px;
+            transform: rotate(-45deg);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <div class="outside">
+            <div class="front">
+                <p>HAPPY<br>BIRTHDAY</p>
+                <div class="cake">
+                    <div class="top-layer"></div>
+                    <div class="middle-layer"></div>
+                    <div class="bottom-layer"></div>
+                    <div class="candle"></div>
+                </div>
+            </div>
+            <div class="back"></div>
+        </div>
+
+        <div class="inside">
+            <p>" 🍻 Happy Birthday! 🍻"</p>
+            <p style="font-size: 40px; margin-top: 20px;">🎁</p>
+        </div>
+    </div>
+
+</body>
+</html>
