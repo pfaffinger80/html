@@ -3,32 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Morse Kamera-Decoder PRO</title>
+    <title>Morse Decoder - Kompakt</title>
     <style>
         body { 
             font-family: 'Segoe UI', Tahoma, sans-serif; 
             background: #111; 
             color: white; 
             text-align: center; 
-            margin: 0; 
-            overflow: hidden;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
         }
+
+        /* Verkleinertes Video-Fenster */
         #video-container { 
             position: relative; 
             width: 100%; 
-            max-width: 500px; 
-            margin: auto; 
+            max-height: 40vh; /* Maximal 40% der Höhe */
             background: #000;
+            overflow: hidden;
+            border-bottom: 2px solid #333;
         }
-        video { width: 100%; display: block; }
+        video { 
+            width: 100%; 
+            height: 40vh; 
+            object-fit: cover; /* Schneidet das Bild passend zu */
+        }
         
-        /* Das Fokus-Quadrat */
         #crosshair {
             position: absolute; top: 50%; left: 50%;
-            width: 80px; height: 80px;
+            width: 60px; height: 60px;
             border: 3px solid #00ff00;
             transform: translate(-50%, -50%);
-            box-shadow: 0 0 15px rgba(0,255,0,0.5);
+            box-shadow: 0 0 10px rgba(0,255,0,0.5);
             pointer-events: none;
             z-index: 10;
         }
@@ -37,36 +45,37 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 15px;
-            padding: 15px;
+            gap: 10px;
+            padding: 10px;
             background: #222;
         }
 
         #status-light {
-            width: 40px; height: 40px; border-radius: 50%;
+            width: 30px; height: 30px; border-radius: 50%;
             background: #333; border: 2px solid #555;
-            transition: background 0.05s;
         }
-        #status-light.on { background: #00ff00; box-shadow: 0 0 20px #00ff00; border-color: white; }
+        #status-light.on { background: #00ff00; box-shadow: 0 0 15px #00ff00; border-color: white; }
 
-        .controls { padding: 15px; background: #1a1a1a; }
+        .controls { padding: 10px; background: #1a1a1a; flex-shrink: 0; }
         
-        input[type=range] { width: 90%; height: 25px; margin: 10px 0; }
+        input[type=range] { width: 85%; height: 20px; }
+
+        .output-container {
+            flex-grow: 1;
+            padding: 10px;
+            overflow-y: auto;
+        }
 
         .output-box {
-            margin: 10px; padding: 15px;
+            margin-bottom: 10px; padding: 10px;
             background: #000; border: 1px solid #333;
-            border-radius: 8px; min-height: 40px;
-            font-family: monospace; font-size: 22px;
+            border-radius: 5px; min-height: 35px;
+            font-family: monospace; font-size: 18px;
             word-break: break-all;
         }
         
-        .debug-info { font-size: 12px; color: #888; margin-bottom: 5px; }
-        
-        button {
-            padding: 10px 20px; background: #444; color: white;
-            border: none; border-radius: 5px; cursor: pointer;
-        }
+        .debug-info { font-size: 11px; color: #888; }
+        button { padding: 8px 16px; background: #444; color: white; border: none; border-radius: 4px; }
     </style>
 </head>
 <body>
@@ -80,19 +89,20 @@
     <div id="status-light"></div>
     <div style="text-align: left;">
         <div class="debug-info" id="debugText">Helligkeit: 0</div>
-        <div id="signalText" style="font-weight: bold; color: #888;">KEIN SIGNAL</div>
+        <div id="signalText" style="font-weight: bold; font-size: 12px; color: #888;">KEIN SIGNAL</div>
     </div>
+    <button onclick="clearOutput()" style="margin-left: auto;">Löschen</button>
 </div>
 
 <div class="controls">
-    <label>Schwellenwert (Sensibilität): <b id="threshVal">120</b></label><br>
+    <label style="font-size: 14px;">Sensibilität: <b id="threshVal">120</b></label><br>
     <input type="range" id="threshSlider" min="0" max="255" value="120">
-    <br>
-    <button onclick="clearOutput()">Text löschen</button>
 </div>
 
-<div class="output-box" id="morseOutput" style="color: #00ff00;"></div>
-<div class="output-box" id="textOutput" style="font-size: 26px; color: #ffcc00; border-color: #ffcc00;"></div>
+<div class="output-container">
+    <div class="output-box" id="morseOutput" style="color: #00ff00;"></div>
+    <div class="output-box" id="textOutput" style="font-size: 22px; color: #ffcc00; border-color: #ffcc00;"></div>
+</div>
 
 <canvas id="canvas" style="display:none;"></canvas>
 
@@ -112,12 +122,10 @@
     let isFlashOn = false;
     let lastToggleTime = Date.now();
     let morseString = "";
-    
-    // Zeitkonstante (Muss zum Sender passen: 200ms)
     const UNIT_TIME = 200; 
 
     const MORSE_MAP = {
-        ".-":"A", "-...":"B", "-.-.":"C", "-..":"D", ".":"E", "..-.":"F", "--.":"G", "....":"H", "..":"I", ".---":"J", "-.-":"K", ".-..":"L", "--":"M", "-.":"N", "---":"O", ".--.":"P", "--.-":"Q", ".-.":"R", "...":"S", "-":"T", "..-":"U", "...-":"V", ".--":"W", "-..-":"X", "-.--":"Y", "--..":"Z", "-----":"0", ".----":"1", "..---":"2", "...--":"3", "....-":"4", ".....":"5", "-....":"6", "--...":"7", "---..":"8", "----.":"9", "/":" "
+        ".-":"A", "-...":"B", "-.-.":"C", "-..":"D", ".":"E", "..-.":"F", "--.":"G", "....":"H", "..":"I", ".---":"J", "-.-":"K", ".-..":"L", "--":"M", "-.":"N", "---":"O", ".--.":"P", "--.-":"Q", ".-.":"R", "...":"S", "-":"T", "..-":"U", "...-":"V", ".--":"W", "-..-":"X", "-.--":"Y", "--..":"Z", "-----":"0", ".----":"1", "..---":"2", "...--":"3", "....-":"4", ".....":"5", "-....":"6", "--...":"7", "---..":"8", "----.":"9"
     };
 
     threshSlider.oninput = function() {
@@ -128,38 +136,27 @@
     async function startCamera() {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: 'environment', focusMode: 'continuous' } 
+                video: { facingMode: 'environment' } 
             });
             video.srcObject = stream;
             video.onloadedmetadata = () => {
                 requestAnimationFrame(analyzeFrame);
             };
         } catch (err) {
-            alert("Kamerafehler: " + err.message + "\nBitte HTTPS nutzen!");
+            alert("Fehler: " + err.message);
         }
     }
 
     function analyzeFrame() {
         if (video.videoWidth > 0) {
-            // Wir analysieren ein 50x50 Feld im Zentrum
             const size = 50;
-            canvas.width = size;
-            canvas.height = size;
-            
-            ctx.drawImage(video, 
-                video.videoWidth/2 - size/2, video.videoHeight/2 - size/2, size, size, 
-                0, 0, size, size
-            );
-            
-            const frame = ctx.getImageData(0, 0, size, size);
-            const data = frame.data;
+            canvas.width = size; canvas.height = size;
+            ctx.drawImage(video, video.videoWidth/2 - size/2, video.videoHeight/2 - size/2, size, size, 0, 0, size, size);
+            const data = ctx.getImageData(0, 0, size, size).data;
             let brightnessTotal = 0;
-
             for (let i = 0; i < data.length; i += 4) {
-                // Durchschnittliche Helligkeit des Pixels
                 brightnessTotal += (data[i] + data[i+1] + data[i+2]) / 3;
             }
-
             const avgBrightness = brightnessTotal / (data.length / 4);
             debugText.textContent = "Helligkeit: " + Math.round(avgBrightness);
 
@@ -167,7 +164,6 @@
             const duration = now - lastToggleTime;
 
             if (avgBrightness > threshold) {
-                // LICHT AN
                 if (!isFlashOn) {
                     isFlashOn = true;
                     statusLight.classList.add('on');
@@ -176,9 +172,7 @@
                     lastToggleTime = now;
                 }
             } else {
-                // LICHT AUS
                 if (isFlashOn) {
-                    // Impuls auswerten (Filter: Signale < 50ms ignorieren)
                     if (duration > 50) {
                         const symbol = (duration < UNIT_TIME * 2.2) ? "." : "-";
                         morseString += symbol;
@@ -190,16 +184,9 @@
                     signalText.style.color = "#888";
                     lastToggleTime = now;
                 }
-
-                // Buchstabentrennung (Pause > 3 Einheiten)
                 if (duration > UNIT_TIME * 3 && morseString.length > 0 && !morseString.endsWith(" ")) {
                     morseString += " ";
                     decodeMorse();
-                }
-                
-                // Worttrennung (Pause > 7 Einheiten)
-                if (duration > UNIT_TIME * 7 && morseString.length > 0 && !morseString.endsWith(" / ")) {
-                    // Optional: morseString += " / ";
                 }
             }
         }
@@ -209,9 +196,7 @@
     function decodeMorse() {
         const parts = morseString.trim().split(" ");
         let result = "";
-        parts.forEach(p => {
-            if (MORSE_MAP[p]) result += MORSE_MAP[p];
-        });
+        parts.forEach(p => { if (MORSE_MAP[p]) result += MORSE_MAP[p]; });
         textOutput.textContent = result;
     }
 
