@@ -3,51 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Morse Decoder - Kompakt</title>
+    <title>Morse Decoder PRO - Optimiert</title>
     <style>
         body { 
             font-family: 'Segoe UI', Tahoma, sans-serif; 
-            background: #111; 
-            color: white; 
-            text-align: center; 
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
+            background: #111; color: white; text-align: center; margin: 0;
+            display: flex; flex-direction: column; height: 100vh;
         }
 
-        /* Verkleinertes Video-Fenster */
         #video-container { 
-            position: relative; 
-            width: 100%; 
-            max-height: 40vh; /* Maximal 40% der Höhe */
-            background: #000;
-            overflow: hidden;
-            border-bottom: 2px solid #333;
+            position: relative; width: 100%; max-height: 40vh; 
+            background: #000; overflow: hidden; border-bottom: 2px solid #333;
         }
-        video { 
-            width: 100%; 
-            height: 40vh; 
-            object-fit: cover; /* Schneidet das Bild passend zu */
-        }
+        video { width: 100%; height: 40vh; object-fit: cover; }
         
         #crosshair {
             position: absolute; top: 50%; left: 50%;
-            width: 60px; height: 60px;
-            border: 3px solid #00ff00;
+            width: 60px; height: 60px; border: 3px solid #00ff00;
             transform: translate(-50%, -50%);
-            box-shadow: 0 0 10px rgba(0,255,0,0.5);
-            pointer-events: none;
-            z-index: 10;
+            box-shadow: 0 0 15px rgba(0,255,0,0.5);
+            pointer-events: none; z-index: 10;
         }
 
         #status-indicator {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            padding: 10px;
-            background: #222;
+            display: flex; align-items: center; justify-content: center;
+            gap: 10px; padding: 10px; background: #222;
         }
 
         #status-light {
@@ -57,25 +37,21 @@
         #status-light.on { background: #00ff00; box-shadow: 0 0 15px #00ff00; border-color: white; }
 
         .controls { padding: 10px; background: #1a1a1a; flex-shrink: 0; }
-        
-        input[type=range] { width: 85%; height: 20px; }
+        input[type=range] { width: 85%; height: 20px; cursor: pointer; }
 
         .output-container {
-            flex-grow: 1;
-            padding: 10px;
-            overflow-y: auto;
+            flex-grow: 1; padding: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
         }
 
         .output-box {
-            margin-bottom: 10px; padding: 10px;
-            background: #000; border: 1px solid #333;
-            border-radius: 5px; min-height: 35px;
-            font-family: monospace; font-size: 18px;
-            word-break: break-all;
+            padding: 12px; background: #000; border: 1px solid #333;
+            border-radius: 5px; min-height: 40px; font-family: monospace; font-size: 20px;
+            word-break: break-all; text-align: center;
         }
         
         .debug-info { font-size: 11px; color: #888; }
-        button { padding: 8px 16px; background: #444; color: white; border: none; border-radius: 4px; }
+        button { padding: 8px 16px; background: #444; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:active { background: #666; }
     </style>
 </head>
 <body>
@@ -100,8 +76,8 @@
 </div>
 
 <div class="output-container">
-    <div class="output-box" id="morseOutput" style="color: #00ff00;"></div>
-    <div class="output-box" id="textOutput" style="font-size: 22px; color: #ffcc00; border-color: #ffcc00;"></div>
+    <div class="output-box" id="morseOutput" style="color: #00ff00; letter-spacing: 2px;"></div>
+    <div class="output-box" id="textOutput" style="font-size: 24px; color: #ffcc00; border-color: #ffcc00; font-weight: bold;"></div>
 </div>
 
 <canvas id="canvas" style="display:none;"></canvas>
@@ -122,6 +98,8 @@
     let isFlashOn = false;
     let lastToggleTime = Date.now();
     let morseString = "";
+    
+    // Zeitkonstante (200ms wie im Sender)
     const UNIT_TIME = 200; 
 
     const MORSE_MAP = {
@@ -136,27 +114,34 @@
     async function startCamera() {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: 'environment' } 
+                video: { facingMode: 'environment', focusMode: 'continuous' } 
             });
             video.srcObject = stream;
             video.onloadedmetadata = () => {
                 requestAnimationFrame(analyzeFrame);
             };
         } catch (err) {
-            alert("Fehler: " + err.message);
+            alert("Kamera-Zugriff verweigert oder nicht möglich (HTTPS genutzt?).");
         }
     }
 
     function analyzeFrame() {
         if (video.videoWidth > 0) {
-            const size = 50;
+            const size = 40; // Kleinerer Bereich für schnellere Analyse
             canvas.width = size; canvas.height = size;
+            
+            // Fokus auf das Zentrum des Videostreams
             ctx.drawImage(video, video.videoWidth/2 - size/2, video.videoHeight/2 - size/2, size, size, 0, 0, size, size);
-            const data = ctx.getImageData(0, 0, size, size).data;
+            
+            const frame = ctx.getImageData(0, 0, size, size);
+            const data = frame.data;
             let brightnessTotal = 0;
+
             for (let i = 0; i < data.length; i += 4) {
-                brightnessTotal += (data[i] + data[i+1] + data[i+2]) / 3;
+                // Helligkeitsformel (Luminanz)
+                brightnessTotal += (data[i] * 0.299 + data[i+1] * 0.587 + data[i+2] * 0.114);
             }
+
             const avgBrightness = brightnessTotal / (data.length / 4);
             debugText.textContent = "Helligkeit: " + Math.round(avgBrightness);
 
@@ -164,6 +149,7 @@
             const duration = now - lastToggleTime;
 
             if (avgBrightness > threshold) {
+                // SIGNAL AN
                 if (!isFlashOn) {
                     isFlashOn = true;
                     statusLight.classList.add('on');
@@ -172,9 +158,11 @@
                     lastToggleTime = now;
                 }
             } else {
+                // SIGNAL AUS
                 if (isFlashOn) {
-                    if (duration > 50) {
-                        const symbol = (duration < UNIT_TIME * 2.2) ? "." : "-";
+                    // Filter: Nur Signale über 40ms zählen (Rauschunterdrückung)
+                    if (duration > 40) {
+                        const symbol = (duration < UNIT_TIME * 2.1) ? "." : "-";
                         morseString += symbol;
                         morseOutput.textContent = morseString;
                     }
@@ -184,7 +172,9 @@
                     signalText.style.color = "#888";
                     lastToggleTime = now;
                 }
-                if (duration > UNIT_TIME * 3 && morseString.length > 0 && !morseString.endsWith(" ")) {
+
+                // BUCHSTABENTRENNUNG: Wenn Pause > 2.5 * UNIT_TIME
+                if (duration > UNIT_TIME * 2.5 && morseString.length > 0 && !morseString.endsWith(" ")) {
                     morseString += " ";
                     decodeMorse();
                 }
@@ -196,7 +186,9 @@
     function decodeMorse() {
         const parts = morseString.trim().split(" ");
         let result = "";
-        parts.forEach(p => { if (MORSE_MAP[p]) result += MORSE_MAP[p]; });
+        parts.forEach(p => {
+            if (MORSE_MAP[p]) result += MORSE_MAP[p];
+        });
         textOutput.textContent = result;
     }
 
@@ -204,6 +196,7 @@
         morseString = "";
         morseOutput.textContent = "";
         textOutput.textContent = "";
+        debugText.textContent = "Helligkeit: 0";
     }
 
     startCamera();
