@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Morsecode Pro - Live Visualizer (Optimiert)</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            padding: 20px;
+            background: #111;
+            color: #eee;
+            max-width: 600px;
+            margin: auto;
+            text-align: center;
+        }
+        textarea {
+            width: 100%;
+            height: 100px;
+            font-size: 18px;
+            padding: 15px;
+            background: #222;
+            color: #fff;
+            border: 1px solid #444;
+            border-radius: 8px;
+            box-sizing: border-box;
+            margin-bottom: 20px;
+            resize: none;
+        }
+        
+        #light {
+            width: 180px;
+            height: 180px;
+            background-color: #222;
+            border: 5px solid #333;
+            border-radius: 50%;
+            margin: 0 auto 30px;
+            transition: background-color 0.05s, box-shadow 0.05s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #light.active {
+            background-color: #ffcc00;
+            box-shadow: 0 0 70px #ffcc00;
+            border-color: #fff;
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .control-column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        button {
+            width: 100%;
+            max-width: 250px;
+            padding: 14px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+        
+        .btn-connect { background: #444; color: white; }
+        .btn-disconnect { background: #007bff; color: white; }
+        
+        #startBtn { background: #28a745; color: white; }
+        #startBtn.stop { background: #dc3545; }
+
+        .info-sub {
+            font-size: 13px;
+            color: #888;
+            height: 20px;
+        }
+
+        #output {
+            padding: 20px;
+            background: #1a1a1a;
+            font-size: 28px;
+            font-family: 'Courier New', monospace;
+            border-radius: 8px;
+            min-height: 60px;
+            word-break: break-all;
+            border: 1px solid #333;
+            line-height: 1.8;
+            letter-spacing: 4px;
+        }
+        
+        .highlight {
+            color: #ffcc00;
+            background: rgba(255, 204, 0, 0.3);
+            border-radius: 4px;
+            padding: 0 4px;
+        }
+    </style>
+</head>
+<body>
+
+<h2>Morsecode Sender</h2>
+
+<textarea id="inputText" placeholder="Text zum Morsen (z.B. TEST)..." oninput="convertToMorse()"></textarea>
+
+<div id="light"></div>
+
+<div class="controls-grid">
+    <div class="control-column">
+        <button id="connectBtn" class="btn-connect" onclick="handleConnection()">Handy verbinden</button>
+        <div class="info-sub" id="ipPlaceholder">Status: Bereit</div>
+    </div>
+
+    <div class="control-column">
+        <button id="startBtn" onclick="togglePlay()">START</button>
+        <div class="info-sub">
+            <label style="cursor:pointer">
+                <input type="checkbox" id="loopCheck"> Endlosschleife
+            </label>
+        </div>
+    </div>
+</div>
+
+<div id="output"></div>
+
+<script>
+const MORSE = {
+    'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.',
+    'F': '..-.', 'G': '--.', 'H': '....', 'I': '..', 'J': '.---',
+    'K': '-.-', 'L': '.-..', 'M': '--', 'N': '-.', 'O': '---',
+    'P': '.--.', 'Q': '--.-', 'R': '.-.', 'S': '...',
+    'T': '-', 'U': '..-', 'V': '...-', 'W': '.--',
+    'X': '-..-', 'Y': '-.--', 'Z': '--..',
+    '0': '-----', '1': '.----', '2': '..---', '3': '...--',
+    '4': '....-', '5': '.....', '6': '-....', '7': '--...',
+    '8': '---..', '9': '----.', ' ': '/'
+};
+
+let isPlaying = false;
+let isVibrationEnabled = false;
+const DOT_TIME = 200; // Basis-Zeit (ms)
+
+function convertToMorse() {
+    let text = document.getElementById("inputText").value.toUpperCase();
+    let outputDiv = document.getElementById("output");
+    outputDiv.innerHTML = ""; 
+
+    for (let char of text) {
+        if (MORSE[char]) {
+            let code = MORSE[char];
+            for (let symbol of code) {
+                let span = document.createElement("span");
+                span.textContent = symbol;
+                outputDiv.appendChild(span);
+            }
+            // Platzhalter für Pause zwischen Buchstaben
+            let space = document.createElement("span");
+            space.textContent = " ";
+            outputDiv.appendChild(space);
+        }
+    }
+}
+
+function handleConnection() {
+    const btn = document.getElementById("connectBtn");
+    if (!isVibrationEnabled) {
+        isVibrationEnabled = true;
+        btn.textContent = "Vibration AUS";
+        btn.className = "btn-disconnect";
+        if (navigator.vibrate) navigator.vibrate(100);
+    } else {
+        isVibrationEnabled = false;
+        btn.textContent = "Vibration aktivieren";
+        btn.className = "btn-connect";
+    }
+}
+
+async function togglePlay() {
+    const startBtn = document.getElementById("startBtn");
+    const light = document.getElementById("light");
+    const spans = document.getElementById("output").querySelectorAll("span");
+    
+    if (isPlaying) {
+        isPlaying = false;
+        return;
+    }
+    if (spans.length === 0) return;
+
+    isPlaying = true;
+    startBtn.textContent = "STOPP";
+    startBtn.classList.add("stop");
+    
+    do {
+        for (let i = 0; i < spans.length; i++) {
+            if (!isPlaying) break;
+            
+            let symbol = spans[i].textContent;
+            spans[i].classList.add("highlight");
+
+            if (symbol === '.' || symbol === '-') {
+                // SIGNAL AN
+                let duration = (symbol === '.') ? DOT_TIME : DOT_TIME * 3;
+                light.classList.add("active");
+                if (isVibrationEnabled && navigator.vibrate) navigator.vibrate(duration);
+                await sleep(duration);
+                
+                // PAUSE ZWISCHEN DEN SYMBOLEN (WICHTIG!)
+                light.classList.remove("active");
+                await sleep(DOT_TIME * 1.2); // Etwas mehr Pause für die Kamera
+
+            } else if (symbol === ' ') {
+                // BUCHSTABEN-PAUSE (z.B. nach dem E in TEST)
+                await sleep(DOT_TIME * 3.5); 
+            } else if (symbol === '/') {
+                // WORT-PAUSE
+                await sleep(DOT_TIME * 6);
+            }
+            spans[i].classList.remove("highlight");
+        }
+        if (isPlaying && document.getElementById("loopCheck").checked) await sleep(2000);
+    } while (isPlaying && document.getElementById("loopCheck").checked);
+
+    isPlaying = false;
+    startBtn.textContent = "START";
+    startBtn.classList.remove("stop");
+    light.classList.remove("active");
+}
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+</script>
+
+</body>
+</html>
