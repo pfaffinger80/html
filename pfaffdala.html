@@ -70,16 +70,17 @@
             width: 85px; height: 115px; 
             padding: 10px 6px 8px 6px; 
             cursor: pointer; position: relative;
-            display: flex; flex-direction: column; align-items: center; justify-content: flex-start; 
+            display: flex; flex-direction: column; align-items: center; justify-content: space-between; 
             box-shadow: 0 5px 0 #7a562c;
         }
         .pit:active { transform: translateY(2px); box-shadow: 0 2px 0 #7a562c; }
         .pit.empty { opacity: 0.5; cursor: not-allowed; }
         .pit.selected { background: radial-gradient(circle at 30% 30%, #ffdd77, #ffaa33); transform: scale(1.05); box-shadow: 0 0 0 3px #ff7700; z-index: 10;}
 
-        .balls { display: flex; flex-wrap: wrap; justify-content: center; align-content: center; gap: 2px; width: 100%; height: 60px; }
+        /* Exakt dimensioniert für 6 Steine (3x2) */
+        .balls { display: flex; flex-wrap: wrap; justify-content: center; align-content: flex-start; gap: 2px; width: 54px; height: 38px; margin: 0 auto; }
         .ball { width: 16px; height: 16px; background: radial-gradient(circle at 35% 35%, #d66b2a, #943e0c); border-radius: 50%; }
-        .stone-count { font-size: 0.85rem; font-weight: bold; background: #2f2a1f; color: #ffeaac; padding: 2px 10px; border-radius: 20px; margin-top: auto; }
+        .stone-count { font-size: 0.85rem; font-weight: bold; background: #2f2a1f; color: #ffeaac; padding: 2px 10px; border-radius: 20px; }
 
         /* 3. UNTERE LEISTE (PC) */
         .panel-actions { display: flex; justify-content: center; gap: 20px; width: 100%; }
@@ -111,62 +112,66 @@
             #app-container {
                 flex-direction: row; 
                 justify-content: center; 
-                gap: 25px; /* DEUTLICHER ABSTAND ZWISCHEN DEN 3 BEREICHEN */
+                gap: 20px; /* SICHTBARER ABSTAND ZWISCHEN MENÜS UND SPIELFELD */
                 height: 100%;
-                padding: max(5px, env(safe-area-inset-top)) max(15px, env(safe-area-inset-right)) max(5px, env(safe-area-inset-bottom)) max(15px, env(safe-area-inset-left));
+                padding: max(5px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(5px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
             }
 
             /* LEISTE 1 (LINKS) */
             .panel-info {
-                flex-direction: column;
-                justify-content: center; gap: 10px;
-                width: 120px; /* Feste Breite, damit sie kompakt bleibt */
-                height: auto; padding: 10px 8px; 
-                border-radius: 20px; border-width: 2px;
-                flex-shrink: 0; 
+                flex-direction: column; justify-content: center; gap: 8px;
+                width: 100px; /* Feste, schmale Breite */
+                flex-shrink: 0; /* Darf nicht schrumpfen */
+                height: auto; padding: 10px 5px; 
+                border-radius: 15px; border-width: 2px;
             }
-            .score-box { flex-direction: column; gap: 8px; }
-            .score { padding: 4px 5px; font-size: 0.75rem; display: flex; flex-direction: column; align-items: center; text-align: center; border-radius: 15px;}
+            .score-box { flex-direction: column; gap: 6px; }
+            .score { padding: 4px; font-size: 0.75rem; display: flex; flex-direction: column; align-items: center; text-align: center; border-radius: 12px;}
             .score span { font-size: 1.1rem; margin-left: 0; margin-top: 2px;}
-            .controls-top { flex-direction: column; gap: 10px; width: 100%; }
+            .controls-top { flex-direction: column; gap: 8px; width: 100%; }
             .speed-control { flex-direction: column; font-size: 0.75rem; gap: 2px; }
             .speed-control input { width: 90%; }
-            button.top-btn { padding: 6px 10px; font-size: 0.8rem; width: 100%; border-radius: 15px;}
+            button.top-btn { padding: 6px 5px; font-size: 0.8rem; width: 100%; border-radius: 12px;}
 
             /* MITTLERER BEREICH (SPIELFELD) */
             .panel-center {
-                flex-grow: 1; /* Nimmt den restlichen Platz ein */
-                max-width: 700px; /* Darf jetzt deutlich breiter werden */
+                flex-grow: 1; 
+                max-width: 650px; /* Nimmt sich maximalen Platz, damit es breit wird */
                 height: 100%; justify-content: center; gap: 6px;
             }
-            .status { padding: 4px 15px; font-size: 0.85rem; width: 100%; border-radius: 15px; }
+            .status { padding: 4px 10px; font-size: 0.8rem; width: 100%; border-radius: 12px; }
 
-            .board { padding: 8px 12px; border-width: 3px; border-radius: 25px; width: 100%; }
-            .player-zone { padding: 3px; border-radius: 18px; }
+            .board { padding: 8px 10px; border-width: 3px; border-radius: 20px; width: 100%; }
+            .player-zone { padding: 3px; border-radius: 15px; }
             .divider { height: 4px; margin: 3px 0; }
-            .row { gap: 8px; margin: 3px 0; } /* Mehr Abstand zwischen den Mulden */
+            .row { gap: 6px; margin: 3px 0; flex-wrap: nowrap; /* Zwingt alles in eine Reihe */ } 
             
             .pit {
-                height: 16vh; /* FLACHERE MULDEN */
-                min-height: 40px; max-height: 65px; /* Verhindert das Schlauch-Aussehen */
-                width: calc(12.5% - 8px); /* BREITERE MULDEN */
-                max-width: none;
+                width: 60px; /* ABSOLUT FESTE BREITE */
+                min-width: 60px;
+                height: 72px; /* ABSOLUT FESTE HÖHE */
                 border-radius: 12px; border-width: 2px;
                 padding: 4px 2px; box-shadow: 0 2px 0 #7a562c;
+                flex-shrink: 0; /* Verhindert das Quetschen der Mulden */
+                display: flex; flex-direction: column; align-items: center; justify-content: space-between;
             }
-            .balls { height: 45%; gap: 1px; }
-            .ball { width: 11px; height: 11px; }
-            .stone-count { font-size: 0.7rem; padding: 1px 5px; border-radius: 8px;}
+
+            .balls { 
+                width: 42px; /* Zwingt genau 3 Steine nebeneinander */
+                height: 28px; /* Zwingt genau 2 Steine untereinander */
+                gap: 2px; margin: 0 auto;
+            }
+            .ball { width: 12px; height: 12px; }
+            .stone-count { font-size: 0.75rem; padding: 1px 6px; border-radius: 8px; }
 
             /* LEISTE 3 (RECHTS) */
             .panel-actions {
-                flex-direction: column; 
-                width: 120px; /* Feste Breite */
-                height: auto; gap: 15px; 
-                justify-content: center;
-                flex-shrink: 0;
+                flex-direction: column; justify-content: center; gap: 15px; 
+                width: 100px; /* Feste, schmale Breite */
+                flex-shrink: 0; /* Darf nicht schrumpfen */
+                height: auto; 
             }
-            .action-btn { padding: 12px 5px; font-size: 0.85rem; border-width: 2px; border-radius: 15px; box-shadow: 0 3px 0 #8b5a2e; width: 100%;}
+            .action-btn { padding: 12px 5px; font-size: 0.8rem; border-width: 2px; border-radius: 15px; box-shadow: 0 3px 0 #8b5a2e; width: 100%;}
         }
     </style>
 </head>
@@ -471,7 +476,10 @@
                 if (selectedPit && selectedPit.row === r && selectedPit.col === c) pitDiv.classList.add('selected');
 
                 const ballsDiv = document.createElement('div'); ballsDiv.className = 'balls';
-                const maxBalls = 9; const ballCount = stones > maxBalls ? maxBalls : stones;
+                
+                // HIER IST DIE ÄNDERUNG: Maximal 6 visuelle Steine!
+                const maxBalls = 6; 
+                const ballCount = stones > maxBalls ? maxBalls : stones;
                 
                 for (let i = 0; i < ballCount; i++) {
                     const ball = document.createElement('div'); ball.className = 'ball'; ballsDiv.appendChild(ball);
