@@ -126,7 +126,6 @@
                 padding: 15px 10px; 
                 border-radius: 20px; border-width: 2px;
             }
-            /* Score-Boxen nehmen in der Höhe viel mehr Platz ein */
             .score-box { flex-direction: column; gap: 12px; flex-grow: 1; justify-content: space-evenly; }
             .score { 
                 padding: 10px 5px; 
@@ -177,14 +176,14 @@
                 flex-direction: column; 
                 justify-content: space-between; 
                 gap: 15px; 
-                width: 160px; /* VERBREITERT, DEUTLICH MEHR PLATZ */
+                width: 160px; 
                 flex-shrink: 0; 
                 height: 100%; 
             }
             .action-btn { 
-                flex-grow: 1; /* Teilt den Platz 50/50 auf */
+                flex-grow: 1; 
                 padding: 10px 5px; 
-                font-size: 1.1rem; /* Größere Schrift */
+                font-size: 1.1rem; 
                 border-width: 3px; border-radius: 20px; 
                 box-shadow: 0 4px 0 #8b5a2e; 
                 width: 100%;
@@ -201,10 +200,12 @@
 
 <div id="app-container">
     
+    <!-- LEISTE 1 (Am Desktop: Oben / Am Handy: Links) -->
     <div class="panel-info">
         <div class="score-box">
-            <div class="score">P1 (Unten)<br>Steine:<span id="scoreP1">32</span></div>
-            <div class="score">P2 (Oben)<br>Steine:<span id="scoreP2">32</span></div>
+            <!-- P1 und P2 Text getauscht: P1 ist jetzt oben -->
+            <div class="score">P1 (Oben)<br>Steine:<span id="scoreP1">32</span></div>
+            <div class="score">P2 (Unten)<br>Steine:<span id="scoreP2">32</span></div>
         </div>
         <div class="controls-top">
             <div class="speed-control">
@@ -214,21 +215,26 @@
         </div>
     </div>
 
+    <!-- BEREICH 2 (Mitte) -->
     <div class="panel-center">
-        <div class="status" id="gameStatus">Spieler 1 – Wähle eine Mulde (untere Reihen)</div>
+        <!-- Text auf obere Reihen angepasst -->
+        <div class="status" id="gameStatus">Spieler 1 – Wähle eine Mulde (obere Reihen)</div>
         <div class="board">
-            <div class="player-zone" id="zoneP2">
-                <div class="row" id="row3"></div>
-                <div class="row" id="row2"></div>
+            <!-- SPIELER 1 IST JETZT OBEN (Zeile 0 und 1) -->
+            <div class="player-zone" id="zoneP1">
+                <div class="row" id="row0"></div>
+                <div class="row" id="row1"></div>
             </div>
             <div class="divider"></div>
-            <div class="player-zone" id="zoneP1">
-                <div class="row" id="row1"></div>
-                <div class="row" id="row0"></div>
+            <!-- SPIELER 2 IST JETZT UNTEN (Zeile 2 und 3) -->
+            <div class="player-zone" id="zoneP2">
+                <div class="row" id="row2"></div>
+                <div class="row" id="row3"></div>
             </div>
         </div>
     </div>
 
+    <!-- LEISTE 3 (Am Desktop: Unten / Am Handy: Rechts) -->
     <div class="panel-actions">
         <button class="action-btn" id="btnLeft" disabled>⬅️ LINKS</button>
         <button class="action-btn" id="btnRight" disabled>➡️ RECHTS</button>
@@ -264,18 +270,15 @@
         return baseAmount * speedMap[speedVal];
     }
 
-    // Zählt alle Steine auf dem Feld PLUS die bereits erbeuteten Steine
     function updateScoreUI() {
         let p1TotalStones = scores[1];
         let p2TotalStones = scores[2];
 
-        // Zähle Steine auf P1 Feld (Zeile 0 und 1)
         for (let r = 0; r < 2; r++) {
             for (let c = 0; c < COLS; c++) {
                 p1TotalStones += board[r][c];
             }
         }
-        // Zähle Steine auf P2 Feld (Zeile 2 und 3)
         for (let r = 2; r < 4; r++) {
             for (let c = 0; c < COLS; c++) {
                 p2TotalStones += board[r][c];
@@ -397,7 +400,7 @@
         }
 
         if (gameActive) {
-            statusDiv.innerText = `🎲 Spieler ${currentPlayer} (${currentPlayer === 1 ? "unten" : "oben"}) – Wähle eine Mulde`;
+            statusDiv.innerText = `🎲 Spieler ${currentPlayer} (${currentPlayer === 1 ? "oben" : "unten"}) – Wähle eine Mulde`;
         }
         animationInProgress = false; renderBoard();
     }
@@ -420,7 +423,6 @@
 
     function endGame(winner) {
         gameActive = false; animationInProgress = false;
-        // Beim Endbildschirm werten wir die finalen Steine aus, die jetzt in scores[] liegen
         if (winner === 1) statusDiv.innerText = `🏆 SPIELER 1 GEWINNT (${scores[1]} : ${scores[2]}) 🏆`;
         else statusDiv.innerText = `🏆 SPIELER 2 GEWINNT (${scores[2]} : ${scores[1]}) 🏆`;
         setButtonsState(false);
@@ -473,20 +475,18 @@
         const isP1 = (row === 0 || row === 1);
         const isP2 = (row === 2 || row === 3);
         
-        if (currentPlayer === 1 && !isP1) { statusDiv.innerText = "❌ Nur deine Mulden (unten) wählen!"; return; }
-        if (currentPlayer === 2 && !isP2) { statusDiv.innerText = "❌ Nur deine Mulden (oben) wählen!"; return; }
+        if (currentPlayer === 1 && !isP1) { statusDiv.innerText = "❌ Nur deine Mulden (oben) wählen!"; return; }
+        if (currentPlayer === 2 && !isP2) { statusDiv.innerText = "❌ Nur deine Mulden (unten) wählen!"; return; }
         if (board[row][col] === 0) { statusDiv.innerText = "Mulde ist leer!"; return; }
 
-        // Wenn man nochmal auf genau dieselbe Mulde tippt -> Auswahl abbrechen
         if (selectedPit !== null && selectedPit.row === row && selectedPit.col === col) {
             selectedPit = null;
             setButtonsState(false);
-            statusDiv.innerText = `🎲 Spieler ${currentPlayer} (${currentPlayer === 1 ? "unten" : "oben"}) – Wähle eine Mulde`;
+            statusDiv.innerText = `🎲 Spieler ${currentPlayer} (${currentPlayer === 1 ? "oben" : "unten"}) – Wähle eine Mulde`;
             renderBoard();
             return;
         }
 
-        // Ansonsten einfach Mulde auswählen (bzw. Auswahl wechseln)
         selectedPit = { row, col };
         renderBoard();
         showDirectionChoice();
@@ -525,7 +525,6 @@
         if (currentPlayer === 1) { p1zone.classList.add('active-p1'); p2zone.classList.remove('active-p2'); } 
         else { p2zone.classList.add('active-p2'); p1zone.classList.remove('active-p1'); }
 
-        // Updatet bei jedem rendern die live Gesamtpunktzahl
         updateScoreUI();
     }
 
@@ -536,7 +535,7 @@
         selectedPit = null; animationInProgress = false;
         
         setButtonsState(false); renderBoard();
-        statusDiv.innerText = "🔄 Spieler 1 beginnt (untere Reihen)";
+        statusDiv.innerText = "🔄 Spieler 1 beginnt (obere Reihen)";
     }
 
     document.getElementById('resetBtn').addEventListener('click', resetGame);
