@@ -422,7 +422,6 @@
         renderBoard();
     }
 
-    // NEUE FUNKTION: Prüft, ob die vordere Reihe eines Spielers komplett leer ist
     function isFrontRowEmpty(player) {
         const row = (player === 1) ? 1 : 2;
         for (let c = 0; c < COLS; c++) {
@@ -432,12 +431,10 @@
     }
 
     function checkGameOverAfterMove() {
-        // NEUER CHECK: Wenn die vordere Reihe des Gegners (hier currentPlayer, da der Zug gerade gewechselt hat) leer ist
         if (isFrontRowEmpty(currentPlayer)) {
             const winner = (currentPlayer === 1) ? 2 : 1;
             awardRemainingTo(winner); 
             endGame(winner);
-            // Wir überschreiben die Standard-Meldung mit dem exakten Grund
             statusDiv.innerText = `🛑 Vordere Reihe von Spieler ${currentPlayer} leer! SPIELER ${winner} GEWINNT 🏆`;
             return true;
         }
@@ -549,6 +546,15 @@
         setButtonsState(false); renderBoard();
         statusDiv.innerText = "🔄 Spieler 1 beginnt (obere Reihen)";
     }
+
+    // NEU: Keyboard-Steuerung für die Links/Rechts-Buttons
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'ArrowLeft' && !btnLeft.disabled) {
+            btnLeft.click();
+        } else if (event.key === 'ArrowRight' && !btnRight.disabled) {
+            btnRight.click();
+        }
+    });
 
     document.getElementById('resetBtn').addEventListener('click', resetGame);
     resetGame();
