@@ -2,12 +2,16 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Pfaffdala</title>
     <style>
         * {
             box-sizing: border-box;
             user-select: none;
+            /* Verhindert das typische mobile Highlight-Blinken beim Tippen */
+            -webkit-tap-highlight-color: transparent; 
         }
 
         body {
@@ -16,13 +20,30 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            /* HIER IST DIE ÄNDERUNG: Statt 'center' starten wir oben ('flex-start') */
             justify-content: flex-start; 
             margin: 0;
-            /* Fester Abstand nach oben (z.B. 40px), rechts, unten, links */
-            padding: 40px 20px 50px 20px; 
+            /* safe-area-inset schützt vor der Notch (Kamera) am iPhone */
+            padding: max(20px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
             min-height: 100vh;
+            overflow-x: hidden;
         }
+
+        /* --- Rotate Device Overlay für Smartphones im Hochformat --- */
+        #rotateOverlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #2c281c;
+            color: #ffdd99;
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            font-size: 1.5rem;
+            text-align: center;
+            padding: 20px;
+        }
+        #rotateOverlay span { font-size: 3rem; margin-bottom: 20px; display: block; }
 
         h1 {
             font-size: 1.5rem;
@@ -126,6 +147,8 @@
             border-radius: 60px;
             padding: 15px;
             border: 6px solid #4f3218;
+            width: 100%;
+            max-width: 900px;
         }
 
         .player-zone {
@@ -237,17 +260,56 @@
             cursor: pointer;
         }
 
-        @media (max-width: 850px) {
-            .pit { width: 70px; height: 100px; padding: 8px 4px 6px 4px; }
-            .balls { height: 50px; }
-            .ball { width: 14px; height: 14px; }
-            .stone-count { font-size: 0.75rem; }
-            button { font-size: 0.9rem; padding: 5px 16px; }
-            .speed-control { flex-direction: column; gap: 5px; font-size: 1rem; }
+        /* --- HOCHFORMAT (PORTRAIT) HANDY-ERKENNUNG --- */
+        @media (max-width: 768px) and (orientation: portrait) {
+            #rotateOverlay {
+                display: flex; /* Zeigt den Warnhinweis */
+            }
+            /* Versteckt das kaputte Layout im Hochformat */
+            .score-panel, .status, .controls, .board, .reset, .speed-control {
+                display: none;
+            }
+            body { justify-content: center; }
         }
+
+        /* --- QUERFORMAT (LANDSCAPE) FÜR IPHONE 13 (geringe Höhe) --- */
+        @media (max-height: 500px) and (orientation: landscape) {
+            body {
+                /* Weniger Padding oben/unten, um Platz zu sparen */
+                padding: max(5px, env(safe-area-inset-top)) max(5px, env(safe-area-inset-right)) max(5px, env(safe-area-inset-bottom)) max(5px, env(safe-area-inset-left));
+                justify-content: center;
+            }
+            .score-panel { margin: 2px 0; font-size: 0.9rem; padding: 2px 15px; border-width: 2px; }
+            .score { padding: 2px 10px; }
+            .score span { font-size: 1.2rem; }
+            .status { margin: 2px 0; padding: 5px 15px; font-size: 0.85rem; }
+            .controls { margin: 2px 0; min-height: 40px; }
+            button { font-size: 0.85rem; padding: 4px 12px; border-width: 2px; box-shadow: 0 2px 0 #8b5a2e;}
+            
+            .board { padding: 5px; border-width: 3px; border-radius: 30px; }
+            .player-zone { padding: 3px; border-radius: 20px;}
+            .divider { height: 3px; margin: 4px 0; }
+            .row { gap: 6px; margin: 3px 0; }
+            
+            /* Mulden drastisch verkleinern */
+            .pit { width: 65px; height: 75px; padding: 4px 2px 2px 2px; border-width: 2px; border-radius: 25px; box-shadow: 0 3px 0 #7a562c;}
+            .balls { height: 35px; gap: 1px; }
+            .ball { width: 11px; height: 11px; }
+            .stone-count { font-size: 0.7rem; padding: 1px 5px; }
+            
+            .reset { margin: 5px 0; padding: 4px 15px; }
+            .speed-control { padding: 5px 15px; font-size: 0.85rem; border-width: 2px; }
+            .speed-control input[type="range"] { width: 120px; }
+        }
+
     </style>
 </head>
 <body>
+
+<div id="rotateOverlay">
+    <span>📱</span>
+    Bitte drehe dein Handy in das Querformat!
+</div>
 
 <div class="score-panel">
     <div class="score">🌿 SPIELER 1 (UNTEN): <span id="scoreP1">0</span></div>
@@ -276,6 +338,13 @@
 </div>
 
 <script>
+    // --- ERKENNUNG OB ES EIN MOBILES GERÄT IST ---
+    const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (isMobileDevice) {
+        console.log("Gerät erkannt: Smartphone/Tablet. Optimiere Steuerung...");
+        // Hier könntest du zukünftig touch-spezifische Logik einbauen
+    }
+
     const COLS = 8;
     const ROWS = 4;
     let board = Array(ROWS).fill().map(() => Array(COLS).fill(2));
