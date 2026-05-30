@@ -200,10 +200,8 @@
 
 <div id="app-container">
     
-    <!-- LEISTE 1 (Am Desktop: Oben / Am Handy: Links) -->
     <div class="panel-info">
         <div class="score-box">
-            <!-- P1 und P2 Text getauscht: P1 ist jetzt oben -->
             <div class="score">P1 (Oben)<br>Steine:<span id="scoreP1">32</span></div>
             <div class="score">P2 (Unten)<br>Steine:<span id="scoreP2">32</span></div>
         </div>
@@ -215,18 +213,14 @@
         </div>
     </div>
 
-    <!-- BEREICH 2 (Mitte) -->
     <div class="panel-center">
-        <!-- Text auf obere Reihen angepasst -->
         <div class="status" id="gameStatus">Spieler 1 – Wähle eine Mulde (obere Reihen)</div>
         <div class="board">
-            <!-- SPIELER 1 IST JETZT OBEN (Zeile 0 und 1) -->
             <div class="player-zone" id="zoneP1">
                 <div class="row" id="row0"></div>
                 <div class="row" id="row1"></div>
             </div>
             <div class="divider"></div>
-            <!-- SPIELER 2 IST JETZT UNTEN (Zeile 2 und 3) -->
             <div class="player-zone" id="zoneP2">
                 <div class="row" id="row2"></div>
                 <div class="row" id="row3"></div>
@@ -234,7 +228,6 @@
         </div>
     </div>
 
-    <!-- LEISTE 3 (Am Desktop: Unten / Am Handy: Rechts) -->
     <div class="panel-actions">
         <button class="action-btn" id="btnLeft" disabled>⬅️ LINKS</button>
         <button class="action-btn" id="btnRight" disabled>➡️ RECHTS</button>
@@ -429,7 +422,26 @@
         renderBoard();
     }
 
+    // NEUE FUNKTION: Prüft, ob die vordere Reihe eines Spielers komplett leer ist
+    function isFrontRowEmpty(player) {
+        const row = (player === 1) ? 1 : 2;
+        for (let c = 0; c < COLS; c++) {
+            if (board[row][c] > 0) return false;
+        }
+        return true;
+    }
+
     function checkGameOverAfterMove() {
+        // NEUER CHECK: Wenn die vordere Reihe des Gegners (hier currentPlayer, da der Zug gerade gewechselt hat) leer ist
+        if (isFrontRowEmpty(currentPlayer)) {
+            const winner = (currentPlayer === 1) ? 2 : 1;
+            awardRemainingTo(winner); 
+            endGame(winner);
+            // Wir überschreiben die Standard-Meldung mit dem exakten Grund
+            statusDiv.innerText = `🛑 Vordere Reihe von Spieler ${currentPlayer} leer! SPIELER ${winner} GEWINNT 🏆`;
+            return true;
+        }
+
         if (!playerHasAnyStone(currentPlayer)) {
             const winner = (currentPlayer === 1) ? 2 : 1;
             awardRemainingTo(winner); endGame(winner); return true;
