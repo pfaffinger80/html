@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Pfaffdala - Online P2P (Adaptives Layout + Sound)</title>
+    <title>Pfaffdala - Online P2P (Adaptives Layout + Sound + Große Kugeln)</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * {
@@ -32,7 +32,7 @@
             gap: 15px;
         }
 
-        /* 1. OBERE LEISTE (PC) */
+        /* 1. OBERE LEISTE (PC) - JETZT MIT NETZWERK-STEUERUNG */
         .panel-info {
             display: flex; justify-content: space-between; align-items: center;
             width: 100%; background: #cbba8c; border-radius: 60px;
@@ -144,7 +144,6 @@
 
             .score-box { flex-direction: column; gap: 4px; flex-grow: 1; justify-content: center; min-width: 0;}
             
-            /* HIER GEÄNDERT: Die Punkte sind nun in der mobilen Ansicht deutlich größer! */
             .score { 
                 padding: 4px; font-size: clamp(0.7rem, 2.5vw, 0.85rem); display: flex; flex-direction: column; align-items: center; 
                 justify-content: center; text-align: center; border-radius: 15px; width: 100%; 
@@ -194,8 +193,10 @@
                 display: flex; flex-direction: column; align-items: center; justify-content: space-between;
             }
 
-            .balls { width: 100%; max-width: 30px; height: 20px; gap: 1px; margin: 0 auto; }
-            .ball { width: 6px; height: 6px; }
+            /* HIER GEÄNDERT: Die Kugeln selbst und der Platz für sie wurden massiv vergrößert */
+            .balls { width: 100%; max-width: 45px; height: 30px; gap: 2px; margin: 0 auto; }
+            .ball { width: clamp(9px, 3vw, 13px); height: clamp(9px, 3vw, 13px); }
+            
             .stone-count { font-size: 0.65rem; padding: 1px 3px; border-radius: 6px; }
 
             /* LEISTE 3 (RECHTS) */
@@ -273,7 +274,6 @@
     }, { once: true });
 
     function playTurnSound() {
-        // HIER GEÄNDERT: Ton nur in der mobilen Ansicht (Bildschirmhöhe <= 500px oder -breite <= 800px) abspielen
         if (window.innerHeight > 500 && window.innerWidth > 800) return;
         
         if (!audioCtx) return;
