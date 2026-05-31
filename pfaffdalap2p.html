@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Pfaffdala - Online P2P (Adaptives Layout)</title>
+    <title>Pfaffdala - Online P2P (Adaptives Layout + Sound)</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * {
@@ -32,7 +32,7 @@
             gap: 15px;
         }
 
-        /* 1. OBERE LEISTE (PC) - JETZT MIT NETZWERK-STEUERUNG */
+        /* 1. OBERE LEISTE (PC) */
         .panel-info {
             display: flex; justify-content: space-between; align-items: center;
             width: 100%; background: #cbba8c; border-radius: 60px;
@@ -128,10 +128,7 @@
                 padding: max(6px, env(safe-area-inset-top)) max(6px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
             }
 
-            /* Verhindert, dass Flex-Container breiter als der Bildschirm werden */
-            .panel-info, .panel-center, .panel-actions {
-                min-width: 0; 
-            }
+            .panel-info, .panel-center, .panel-actions { min-width: 0; }
 
             /* LEISTE 1 (LINKS) */
             .panel-info {
@@ -146,11 +143,13 @@
             .net-status { font-size: clamp(0.65rem, 2vw, 0.75rem); padding: 4px; border-radius: 12px; }
 
             .score-box { flex-direction: column; gap: 4px; flex-grow: 1; justify-content: center; min-width: 0;}
+            
+            /* HIER GEÄNDERT: Die Punkte sind nun in der mobilen Ansicht deutlich größer! */
             .score { 
-                padding: 4px; font-size: clamp(0.6rem, 2vw, 0.75rem); display: flex; flex-direction: column; align-items: center; 
+                padding: 4px; font-size: clamp(0.7rem, 2.5vw, 0.85rem); display: flex; flex-direction: column; align-items: center; 
                 justify-content: center; text-align: center; border-radius: 15px; width: 100%; 
             }
-            .score span { font-size: clamp(1.1rem, 3vw, 1.4rem); margin-left: 0; margin-top: 2px;}
+            .score span { font-size: clamp(1.5rem, 4vw, 1.8rem); font-weight: bold; margin-left: 0; margin-top: 2px;}
             
             .controls-top { flex-direction: column; gap: 4px; width: 100%; min-width: 0;}
             .speed-control { flex-direction: column; font-size: 0.75rem; gap: 2px; width: 100%;}
@@ -159,13 +158,12 @@
 
             /* MITTLERER BEREICH (SPIELFELD) */
             .panel-center {
-                flex: 1 1 auto; /* Flexibel wachsen und schrumpfen */
+                flex: 1 1 auto; 
                 max-width: 1200px; 
                 height: 100%; 
                 justify-content: flex-start; gap: 4px;
             }
             
-            /* Statusleiste mit ellipsis, falls der Text zu breit ist */
             .status { 
                 padding: 4px 10px; font-size: clamp(0.65rem, 2vw, 0.8rem); width: 100%; border-radius: 12px; flex-shrink: 0; 
                 white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
@@ -187,8 +185,8 @@
             } 
             
             .pit {
-                flex: 1 1 0; /* Gleichmäßige Verteilung, absolut flexibel */
-                min-width: 0; /* Zwingend: Erlaubt das Schrumpfen auf winzigen Displays */
+                flex: 1 1 0; 
+                min-width: 0; 
                 max-width: 85px; 
                 height: auto; 
                 border-radius: 10px; border-width: 2px;
@@ -266,6 +264,37 @@
 </div>
 
 <script>
+    // --- AUDIO SYSTEM (OHNE EXTERNE DATEIEN) ---
+    let audioCtx = null;
+    
+    // Initialisiert AudioContext nach der ersten Benutzerinteraktion (Browser-Richtlinie)
+    document.addEventListener('pointerdown', () => {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }, { once: true });
+
+    function playTurnSound() {
+        // HIER GEÄNDERT: Ton nur in der mobilen Ansicht (Bildschirmhöhe <= 500px oder -breite <= 800px) abspielen
+        if (window.innerHeight > 500 && window.innerWidth > 800) return;
+        
+        if (!audioCtx) return;
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        
+        osc.type = 'sine';
+        // Spieler 1 (Oben) kriegt einen etwas helleren Ton, Spieler 2 einen tieferen
+        osc.frequency.setValueAtTime(currentPlayer === 1 ? 600 : 400, audioCtx.currentTime); 
+        
+        gain.gain.setValueAtTime(0.05, audioCtx.currentTime); // Sehr dezente Lautstärke
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1); // Kurzer Fade-out
+        
+        osc.start(audioCtx.currentTime);
+        osc.stop(audioCtx.currentTime + 0.1);
+    }
+
     // --- PEER JS NETZWERK LOGIK (OHNE PIN) ---
     const SECRET_ROOM_ID = "pfaffdala-privat-raum-101"; 
     
@@ -293,7 +322,6 @@
         netBtns.style.display = 'flex';
     }
 
-    // Spieler 1 klickt auf "Erstellen"
     function startHost() {
         if (peer) peer.destroy();
         netStatus.innerHTML = "Wird geöffnet...";
@@ -322,7 +350,6 @@
         });
     }
 
-    // Spieler 2 klickt auf "Beitreten"
     function joinGame() {
         if (peer) peer.destroy();
         netStatus.innerHTML = "Verbinde...";
@@ -524,6 +551,8 @@
         if (checkGameOverAfterMove()) {
             animationInProgress = false; return;
         }
+
+        playTurnSound(); // HIER: Ton abspielen, wenn der Spieler wechselt
 
         updateStatusText();
         animationInProgress = false; 
