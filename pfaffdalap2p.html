@@ -5,8 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Pfaffdala - Online P2P (Ohne PIN)</title>
-    <!-- PeerJS für P2P Multiplayer -->
+    <title>Pfaffdala - Online P2P (Integriertes Menü)</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * {
@@ -29,34 +28,32 @@
         #app-container {
             display: flex; flex-direction: column; align-items: center;
             width: 100%; max-width: 1000px;
-            padding: 20px 20px;
+            padding: 40px 20px;
             gap: 15px;
         }
 
-        /* --- NETZWERK LEISTE --- */
-        .net-bar {
-            display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
-            width: 100%; background: #cbba8c; border-radius: 40px;
-            padding: 10px 20px; border: 3px solid #4a341a; gap: 15px;
-            font-weight: bold; color: #3e2a12;
-        }
-        .net-status {
-            background: #fef3cf; padding: 6px 16px; border-radius: 20px;
-            box-shadow: inset 0 0 0 2px #b97f2e; font-size: 0.95rem;
-        }
-
-        /* 1. OBERE LEISTE (PC) */
+        /* 1. OBERE LEISTE (PC) - JETZT MIT NETZWERK-STEUERUNG */
         .panel-info {
             display: flex; justify-content: space-between; align-items: center;
             width: 100%; background: #cbba8c; border-radius: 60px;
-            padding: 10px 25px; border: 3px solid #4a341a;
+            padding: 10px 25px; border: 3px solid #4a341a; gap: 15px;
         }
+
+        /* Netzwerk Controls (Integrierter Block) */
+        .network-controls { display: flex; flex-direction: column; gap: 6px; align-items: center; flex-shrink: 0; }
+        .net-btns { display: flex; gap: 8px; width: 100%; justify-content: center;}
+        .net-status {
+            background: #fef3cf; padding: 4px 12px; border-radius: 20px;
+            box-shadow: inset 0 0 0 2px #b97f2e; font-size: 0.9rem; font-weight: bold; color: #3e2a12; text-align: center; width: 100%;
+        }
+
         .score-box { display: flex; gap: 20px; }
         .score { background: #fef3cf; padding: 5px 20px; border-radius: 40px; font-weight: bold; font-size: 1.2rem; box-shadow: inset 0 0 0 2px #b97f2e;}
         .score span { color: #c25d0a; font-size: 1.5rem; margin-left: 8px;}
         
         .controls-top { display: flex; gap: 20px; align-items: center;}
         .speed-control { display: flex; align-items: center; gap: 10px; font-size: 1.1rem; font-weight: bold; color: #3e2a12;}
+        
         button.top-btn { font-size: 1.1rem; padding: 6px 20px; background: #5e3a1c; color: #ffecb3; border: none; border-radius: 40px; font-weight: bold; cursor: pointer; box-shadow: 0 3px 0 #2c1c0c; transition: all 0.2s;}
         button.top-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #2c1c0c;}
         button.top-btn.host { background: #2e6b2f; }
@@ -126,36 +123,37 @@
             #app-container {
                 flex-direction: row; flex-wrap: wrap; 
                 align-items: stretch; justify-content: center; 
-                gap: 10px; height: 100%;
-                padding: max(5px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(5px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+                gap: 10px; height: 100%; padding: 10px;
+                padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
             }
-
-            .net-bar {
-                width: 100%; order: -1; padding: 5px 10px; border-radius: 20px; font-size: 0.8rem; border-width: 2px; flex-shrink: 0; gap: 8px;
-            }
-            button.top-btn { font-size: 0.8rem; padding: 4px 10px; }
 
             /* LEISTE 1 (LINKS) */
             .panel-info {
-                flex-direction: column; justify-content: space-between; gap: 6px;
-                width: 120px; flex-shrink: 0; height: calc(100% - 45px); /* Minus net-bar */
+                flex-direction: column; justify-content: space-between; gap: 4px;
+                width: 130px; flex-shrink: 0; height: 100%;
                 padding: 10px 5px; border-radius: 20px; border-width: 2px;
             }
-            .score-box { flex-direction: column; gap: 8px; flex-grow: 1; justify-content: space-evenly; }
+
+            .network-controls { width: 100%; gap: 6px;}
+            .net-btns { flex-direction: column; gap: 4px; }
+            .net-btns button { width: 100%; font-size: 0.8rem; padding: 4px; }
+            .net-status { font-size: 0.75rem; padding: 4px; border-radius: 12px; }
+
+            .score-box { flex-direction: column; gap: 6px; flex-grow: 1; justify-content: center; }
             .score { 
                 padding: 5px; font-size: 0.75rem; display: flex; flex-direction: column; align-items: center; 
-                justify-content: center; text-align: center; border-radius: 15px; height: 100%; width: 100%; 
+                justify-content: center; text-align: center; border-radius: 15px; width: 100%; 
             }
             .score span { font-size: 1.4rem; margin-left: 0; margin-top: 2px;}
             
-            .controls-top { flex-direction: column; gap: 8px; width: 100%; }
+            .controls-top { flex-direction: column; gap: 6px; width: 100%; }
             .speed-control { flex-direction: column; font-size: 0.75rem; gap: 2px; }
             .speed-control input { width: 90%; }
-            button.top-btn { width: 100%; border-radius: 15px;}
+            button.top-btn { width: 100%; border-radius: 15px; font-size: 0.9rem;}
 
             /* MITTLERER BEREICH (SPIELFELD) */
             .panel-center {
-                flex-grow: 1; max-width: 600px; height: calc(100% - 45px); 
+                flex-grow: 1; max-width: 600px; height: 100%; 
                 justify-content: center; gap: 6px;
             }
             .status { padding: 4px 10px; font-size: 0.8rem; width: 100%; border-radius: 12px; }
@@ -179,7 +177,7 @@
             /* LEISTE 3 (RECHTS) */
             .panel-actions {
                 flex-direction: column; justify-content: space-between; gap: 10px; 
-                width: 140px; flex-shrink: 0; height: calc(100% - 45px); 
+                width: 140px; flex-shrink: 0; height: 100%; 
             }
             .action-btn { 
                 flex-grow: 1; padding: 5px; font-size: 1rem; 
@@ -197,14 +195,16 @@
 
 <div id="app-container">
     
-    <!-- P2P NETZWERK LEISTE (OHNE PIN) -->
-    <div class="net-bar">
-        <button class="top-btn host" id="btnHost" onclick="startHost()">Spiel erstellen</button>
-        <button class="top-btn join" id="btnJoin" onclick="joinGame()">Beitreten</button>
-        <div id="net-status" class="net-status">Lokal (Offline)</div>
-    </div>
-
     <div class="panel-info">
+        
+        <div class="network-controls">
+            <div class="net-btns" id="netBtns">
+                <button class="top-btn host" onclick="startHost()">Erstellen</button>
+                <button class="top-btn join" onclick="joinGame()">Beitreten</button>
+            </div>
+            <div id="net-status" class="net-status">Lokal (Offline)</div>
+        </div>
+
         <div class="score-box">
             <div class="score">P1 (Oben)<br>Steine:<span id="scoreP1">32</span></div>
             <div class="score">P2 (Unten)<br>Steine:<span id="scoreP2">32</span></div>
@@ -241,7 +241,6 @@
 
 <script>
     // --- PEER JS NETZWERK LOGIK (OHNE PIN) ---
-    // Eine fest vergebene ID, die immer genutzt wird, um den "Spielraum" zu identifizieren.
     const SECRET_ROOM_ID = "pfaffdala-privat-raum-101"; 
     
     let peer = null;
@@ -249,8 +248,7 @@
     let myRole = null; // 1 (Host/Oben) oder 2 (Client/Unten), null = Offline
 
     const netStatus = document.getElementById('net-status');
-    const btnHost = document.getElementById('btnHost');
-    const btnJoin = document.getElementById('btnJoin');
+    const netBtns = document.getElementById('netBtns');
 
     const peerConfig = {
         config: {
@@ -262,20 +260,22 @@
     };
 
     function hideNetworkButtons() {
-        btnHost.style.display = 'none';
-        btnJoin.style.display = 'none';
+        netBtns.style.display = 'none';
     }
 
-    // Spieler 1 klickt auf "Spiel erstellen"
+    function showNetworkButtons() {
+        netBtns.style.display = 'flex';
+    }
+
+    // Spieler 1 klickt auf "Erstellen"
     function startHost() {
         if (peer) peer.destroy();
-        netStatus.innerHTML = "Raum wird geöffnet...";
+        netStatus.innerHTML = "Wird geöffnet...";
         
-        // Host registriert sich mit der festen ID
         peer = new Peer(SECRET_ROOM_ID, peerConfig);
 
         peer.on('open', () => {
-            netStatus.innerHTML = "<b style='color:#b97f2e'>Warte auf Mitspieler...</b>";
+            netStatus.innerHTML = "<b style='color:#b97f2e'>Warte auf Spieler...</b>";
             hideNetworkButtons();
         });
 
@@ -289,7 +289,7 @@
         peer.on('error', err => {
             console.error(err);
             if (err.type === 'unavailable-id') {
-                netStatus.innerHTML = "<b style='color:red'>Es gibt bereits ein Spiel! Klicke auf 'Beitreten'.</b>";
+                netStatus.innerHTML = "<b style='color:red'>Spiel existiert! Bitte beitreten.</b>";
             } else {
                 netStatus.innerHTML = `<b style="color:red">Netzwerkfehler!</b>`;
             }
@@ -301,7 +301,6 @@
         if (peer) peer.destroy();
         netStatus.innerHTML = "Verbinde...";
         
-        // Client bekommt eine zufällige ID und verbindet sich zur festen Host-ID
         peer = new Peer(peerConfig);
 
         peer.on('open', () => {
@@ -313,13 +312,14 @@
 
         peer.on('error', err => {
             console.error(err);
-            netStatus.innerHTML = "<b style='color:red'>Kein offenes Spiel gefunden! Klicke auf 'Erstellen'.</b>";
+            netStatus.innerHTML = "<b style='color:red'>Kein Spiel gefunden! Bitte erstellen.</b>";
+            showNetworkButtons();
         });
     }
 
     function setupConnection() {
         conn.on('open', () => {
-            netStatus.innerHTML = `<b style='color:green'>Verbunden (Du bist Spieler ${myRole})</b>`;
+            netStatus.innerHTML = `<b style='color:green'>Online (Spieler ${myRole})</b>`;
             resetGame(false); 
         });
         
@@ -329,10 +329,9 @@
         });
         
         conn.on('close', () => {
-            netStatus.innerHTML = `<b style="color:red">Mitspieler hat das Spiel verlassen.</b>`;
+            netStatus.innerHTML = `<b style="color:red">Partner weg.</b>`;
             myRole = null;
-            btnHost.style.display = 'block';
-            btnJoin.style.display = 'block';
+            showNetworkButtons();
             updateStatusText();
         });
     }
