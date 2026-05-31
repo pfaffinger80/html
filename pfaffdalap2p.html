@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Pfaffdala - Online P2P (Adaptives Layout + Sound + Große Kugeln)</title>
+    <title>Pfaffdala - Online P2P (Nur Lokales Netzwerk)</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * {
@@ -32,7 +32,7 @@
             gap: 15px;
         }
 
-        /* 1. OBERE LEISTE (PC) - JETZT MIT NETZWERK-STEUERUNG */
+        /* 1. OBERE LEISTE (PC) */
         .panel-info {
             display: flex; justify-content: space-between; align-items: center;
             width: 100%; background: #cbba8c; border-radius: 60px;
@@ -193,7 +193,6 @@
                 display: flex; flex-direction: column; align-items: center; justify-content: space-between;
             }
 
-            /* HIER GEÄNDERT: Die Kugeln selbst und der Platz für sie wurden massiv vergrößert */
             .balls { width: 100%; max-width: 45px; height: 30px; gap: 2px; margin: 0 auto; }
             .ball { width: clamp(9px, 3vw, 13px); height: clamp(9px, 3vw, 13px); }
             
@@ -268,7 +267,6 @@
     // --- AUDIO SYSTEM (OHNE EXTERNE DATEIEN) ---
     let audioCtx = null;
     
-    // Initialisiert AudioContext nach der ersten Benutzerinteraktion (Browser-Richtlinie)
     document.addEventListener('pointerdown', () => {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }, { once: true });
@@ -285,32 +283,30 @@
         gain.connect(audioCtx.destination);
         
         osc.type = 'sine';
-        // Spieler 1 (Oben) kriegt einen etwas helleren Ton, Spieler 2 einen tieferen
         osc.frequency.setValueAtTime(currentPlayer === 1 ? 600 : 400, audioCtx.currentTime); 
         
-        gain.gain.setValueAtTime(0.05, audioCtx.currentTime); // Sehr dezente Lautstärke
-        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1); // Kurzer Fade-out
+        gain.gain.setValueAtTime(0.05, audioCtx.currentTime); 
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1); 
         
         osc.start(audioCtx.currentTime);
         osc.stop(audioCtx.currentTime + 0.1);
     }
 
-    // --- PEER JS NETZWERK LOGIK (OHNE PIN) ---
+    // --- PEER JS NETZWERK LOGIK (NUR LOKALES NETZWERK) ---
     const SECRET_ROOM_ID = "pfaffdala-privat-raum-101"; 
     
     let peer = null;
     let conn = null;
-    let myRole = null; // 1 (Host/Oben) oder 2 (Client/Unten), null = Offline
+    let myRole = null; 
 
     const netStatus = document.getElementById('net-status');
     const netBtns = document.getElementById('netBtns');
 
+    // HIER GEÄNDERT: Die iceServers-Liste ist jetzt leer. WebRTC baut keine Internetverbindungen mehr auf, 
+    // sondern funktioniert ausschließlich im lokalen Netzwerk (LAN/WLAN) via Host-Candidates.
     const peerConfig = {
         config: {
-            'iceServers': [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:global.stun.twilio.com:3478' }
-            ]
+            'iceServers': [] 
         }
     };
 
@@ -329,14 +325,14 @@
         peer = new Peer(SECRET_ROOM_ID, peerConfig);
 
         peer.on('open', () => {
-            netStatus.innerHTML = "<b style='color:#b97f2e'>Warte auf Spieler...</b>";
+            netStatus.innerHTML = "<b style='color:#b97f2e'>Warte auf lokales Gerät...</b>";
             hideNetworkButtons();
         });
 
         peer.on('connection', c => {
             if (conn) return; 
             conn = c;
-            myRole = 1; // Host = Spieler 1
+            myRole = 1; 
             setupConnection();
         });
 
@@ -352,27 +348,27 @@
 
     function joinGame() {
         if (peer) peer.destroy();
-        netStatus.innerHTML = "Verbinde...";
+        netStatus.innerHTML = "Suche im WLAN...";
         
         peer = new Peer(peerConfig);
 
         peer.on('open', () => {
             conn = peer.connect(SECRET_ROOM_ID);
-            myRole = 2; // Client = Spieler 2
+            myRole = 2; 
             setupConnection();
             hideNetworkButtons();
         });
 
         peer.on('error', err => {
             console.error(err);
-            netStatus.innerHTML = "<b style='color:red'>Kein Spiel gefunden! Bitte erstellen.</b>";
+            netStatus.innerHTML = "<b style='color:red'>Niemand im WLAN gefunden!</b>";
             showNetworkButtons();
         });
     }
 
     function setupConnection() {
         conn.on('open', () => {
-            netStatus.innerHTML = `<b style='color:green'>Online (Spieler ${myRole})</b>`;
+            netStatus.innerHTML = `<b style='color:green'>Lokales Spiel (P${myRole})</b>`;
             resetGame(false); 
         });
         
@@ -535,7 +531,6 @@
         const { row, col } = selectedPit; 
         const player = currentPlayer;
 
-        // Zug ans Netzwerk senden
         if (!isRemote && conn && conn.open) {
             conn.send({ type: 'move', row, col, direction });
         }
@@ -552,7 +547,7 @@
             animationInProgress = false; return;
         }
 
-        playTurnSound(); // HIER: Ton abspielen, wenn der Spieler wechselt
+        playTurnSound();
 
         updateStatusText();
         animationInProgress = false; 
@@ -560,7 +555,6 @@
     }
 
     async function applyRemoteMove(data) {
-        // Wartet, falls lokal noch animiert wird
         while (animationInProgress) {
             await delay(100);
         }
@@ -669,7 +663,6 @@
     function handlePitClick(row, col) {
         if (!gameActive || animationInProgress) return;
 
-        // Sperre im P2P, falls man nicht an der Reihe ist
         if (myRole && currentPlayer !== myRole) {
             statusDiv.innerText = "⏳ Du bist nicht dran!";
             return; 
