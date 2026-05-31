@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Pfaffdala - Online P2P (Breites Layout)</title>
+    <title>Pfaffdala - Online P2P (Breites & Adaptives Layout)</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * {
@@ -123,46 +123,46 @@
             #app-container {
                 flex-direction: row; flex-wrap: nowrap; 
                 align-items: stretch; justify-content: center; 
-                gap: 10px; height: 100%; padding: 10px;
-                max-width: 100%; /* HIER GEÄNDERT: Container darf die volle Breite nutzen */
-                padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+                gap: 1vw; height: 100%; /* Dynamische Gaps statt festen 10px */
+                max-width: 100%; 
+                padding: max(5px, env(safe-area-inset-top)) max(5px, env(safe-area-inset-right)) max(5px, env(safe-area-inset-bottom)) max(5px, env(safe-area-inset-left));
             }
 
-            /* LEISTE 1 (LINKS) */
+            /* LEISTE 1 (LINKS) - Dynamische Breiten (clamp) */
             .panel-info {
                 flex-direction: column; justify-content: space-between; gap: 4px;
-                width: 130px; flex-shrink: 0; height: 100%;
+                width: clamp(90px, 16vw, 130px); flex-shrink: 1; height: 100%;
                 padding: 10px 5px; border-radius: 20px; border-width: 2px;
             }
 
             .network-controls { width: 100%; gap: 6px;}
             .net-btns { flex-direction: column; gap: 4px; }
             .net-btns button { width: 100%; font-size: 0.8rem; padding: 4px; }
-            .net-status { font-size: 0.75rem; padding: 4px; border-radius: 12px; }
+            .net-status { font-size: 0.7rem; padding: 4px; border-radius: 12px; }
 
             .score-box { flex-direction: column; gap: 6px; flex-grow: 1; justify-content: center; }
             .score { 
-                padding: 5px; font-size: 0.75rem; display: flex; flex-direction: column; align-items: center; 
+                padding: 5px; font-size: 0.7rem; display: flex; flex-direction: column; align-items: center; 
                 justify-content: center; text-align: center; border-radius: 15px; width: 100%; 
             }
-            .score span { font-size: 1.4rem; margin-left: 0; margin-top: 2px;}
+            .score span { font-size: 1.2rem; margin-left: 0; margin-top: 2px;}
             
             .controls-top { flex-direction: column; gap: 6px; width: 100%; }
             .speed-control { flex-direction: column; font-size: 0.75rem; gap: 2px; }
             .speed-control input { width: 90%; }
-            button.top-btn { width: 100%; border-radius: 15px; font-size: 0.9rem;}
+            button.top-btn { width: 100%; border-radius: 15px; font-size: 0.8rem; padding: 4px;}
 
             /* MITTLERER BEREICH (SPIELFELD) - OPTIMIERT FÜR VOLLE BREITE UND HÖHE */
             .panel-center {
                 flex-grow: 1; 
-                max-width: 1200px; /* HIER GEÄNDERT: Spielfeld darf jetzt deutlich breiter werden */
+                max-width: 1200px; 
                 height: 100%; 
                 justify-content: flex-start; gap: 6px;
             }
-            .status { padding: 4px 10px; font-size: 0.8rem; width: 100%; border-radius: 12px; flex-shrink: 0; }
+            .status { padding: 4px 10px; font-size: 0.75rem; width: 100%; border-radius: 12px; flex-shrink: 0; }
 
             .board { 
-                padding: 6px 8px; border-width: 3px; border-radius: 20px; width: 100%; 
+                padding: 6px 4px; border-width: 3px; border-radius: 20px; width: 100%; 
                 flex-grow: 1; display: flex; flex-direction: column; 
             }
             .player-zone { 
@@ -172,31 +172,32 @@
             .divider { height: 4px; margin: 2px 0; flex-shrink: 0; }
             
             .row { 
-                gap: 6px; margin: 2px 0; flex-wrap: nowrap; 
+                gap: 0.5vw; margin: 2px 0; flex-wrap: nowrap; 
                 flex-grow: 1; align-items: stretch; justify-content: space-evenly;
             } 
             
+            /* Gummiband-Effekt für die Mulden, können jetzt auch sehr klein werden */
             .pit {
-                flex: 1; /* HIER GEÄNDERT: Mulden dehnen sich wie Gummibänder in der Breite aus */
-                min-width: 40px; 
-                max-width: 85px; /* Damit sie auf großen Tablets nicht absurd breit werden */
+                flex: 1; 
+                min-width: 26px; /* Stark verkleinerte Mindestbreite für iPhone SE */
+                max-width: 85px; 
                 height: auto; 
-                border-radius: 12px; border-width: 2px;
-                padding: 4px 2px; box-shadow: 0 2px 0 #7a562c;
+                border-radius: 10px; border-width: 2px;
+                padding: 4px 1px; box-shadow: 0 2px 0 #7a562c;
                 display: flex; flex-direction: column; align-items: center; justify-content: space-between;
             }
 
-            .balls { width: 36px; height: 24px; gap: 1px; margin: 0 auto; }
-            .ball { width: 10px; height: 10px; }
-            .stone-count { font-size: 0.7rem; padding: 1px 4px; border-radius: 6px; }
+            .balls { width: 100%; max-width: 30px; height: 24px; gap: 1px; margin: 0 auto; }
+            .ball { width: 7px; height: 7px; }
+            .stone-count { font-size: 0.65rem; padding: 1px 3px; border-radius: 6px; }
 
-            /* LEISTE 3 (RECHTS) */
+            /* LEISTE 3 (RECHTS) - Dynamische Breiten (clamp) */
             .panel-actions {
                 flex-direction: column; justify-content: space-between; gap: 10px; 
-                width: 140px; flex-shrink: 0; height: 100%; 
+                width: clamp(100px, 18vw, 140px); flex-shrink: 1; height: 100%; 
             }
             .action-btn { 
-                flex-grow: 1; padding: 5px; font-size: 1rem; 
+                flex-grow: 1; padding: 4px; font-size: 0.9rem; 
                 border-width: 3px; border-radius: 20px; box-shadow: 0 4px 0 #8b5a2e; width: 100%;
             }
         }
