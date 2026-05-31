@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Pfaffdala - Online P2P</title>
+    <title>Pfaffdala - Online P2P (Ohne PIN)</title>
+    <!-- PeerJS für P2P Multiplayer -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * {
@@ -36,16 +37,12 @@
         .net-bar {
             display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
             width: 100%; background: #cbba8c; border-radius: 40px;
-            padding: 10px 20px; border: 3px solid #4a341a; gap: 10px;
+            padding: 10px 20px; border: 3px solid #4a341a; gap: 15px;
             font-weight: bold; color: #3e2a12;
         }
-        .net-bar input {
-            width: 80px; padding: 4px; border-radius: 10px; border: 2px solid #4a341a; 
-            background: #fff2df; font-weight: bold; text-align: center; font-family: monospace;
-        }
         .net-status {
-            background: #fef3cf; padding: 4px 12px; border-radius: 20px;
-            box-shadow: inset 0 0 0 2px #b97f2e; font-size: 0.9rem;
+            background: #fef3cf; padding: 6px 16px; border-radius: 20px;
+            box-shadow: inset 0 0 0 2px #b97f2e; font-size: 0.95rem;
         }
 
         /* 1. OBERE LEISTE (PC) */
@@ -60,8 +57,10 @@
         
         .controls-top { display: flex; gap: 20px; align-items: center;}
         .speed-control { display: flex; align-items: center; gap: 10px; font-size: 1.1rem; font-weight: bold; color: #3e2a12;}
-        button.top-btn { font-size: 1.1rem; padding: 6px 20px; background: #5e3a1c; color: #ffecb3; border: none; border-radius: 40px; font-weight: bold; cursor: pointer; box-shadow: 0 3px 0 #2c1c0c;}
+        button.top-btn { font-size: 1.1rem; padding: 6px 20px; background: #5e3a1c; color: #ffecb3; border: none; border-radius: 40px; font-weight: bold; cursor: pointer; box-shadow: 0 3px 0 #2c1c0c; transition: all 0.2s;}
         button.top-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #2c1c0c;}
+        button.top-btn.host { background: #2e6b2f; }
+        button.top-btn.join { background: #1b4f8b; }
 
         /* 2. MITTLERER BEREICH (PC) */
         .panel-center {
@@ -132,9 +131,8 @@
             }
 
             .net-bar {
-                width: 100%; order: -1; padding: 5px 10px; border-radius: 20px; font-size: 0.8rem; border-width: 2px; flex-shrink: 0;
+                width: 100%; order: -1; padding: 5px 10px; border-radius: 20px; font-size: 0.8rem; border-width: 2px; flex-shrink: 0; gap: 8px;
             }
-            .net-bar input { width: 60px; padding: 2px; }
             button.top-btn { font-size: 0.8rem; padding: 4px 10px; }
 
             /* LEISTE 1 (LINKS) */
@@ -199,10 +197,10 @@
 
 <div id="app-container">
     
+    <!-- P2P NETZWERK LEISTE (OHNE PIN) -->
     <div class="net-bar">
-        <div>PIN: <span id="my-id" style="background:#fff2df; padding: 2px 8px; border-radius: 5px; border: 1px solid #4a341a;">...</span></div>
-        <input type="number" id="peer-id-input" placeholder="12345" pattern="\d*">
-        <button class="top-btn" onclick="connectToPeer()">Beitreten</button>
+        <button class="top-btn host" id="btnHost" onclick="startHost()">Spiel erstellen</button>
+        <button class="top-btn join" id="btnJoin" onclick="joinGame()">Beitreten</button>
         <div id="net-status" class="net-status">Lokal (Offline)</div>
     </div>
 
@@ -242,65 +240,99 @@
 </div>
 
 <script>
-    // --- PEER JS NETZWERK LOGIK ---
-    const randomPin = Math.floor(10000 + Math.random() * 90000).toString();
-    const peer = new Peer(randomPin, {
+    // --- PEER JS NETZWERK LOGIK (OHNE PIN) ---
+    // Eine fest vergebene ID, die immer genutzt wird, um den "Spielraum" zu identifizieren.
+    const SECRET_ROOM_ID = "pfaffdala-privat-raum-101"; 
+    
+    let peer = null;
+    let conn = null;
+    let myRole = null; // 1 (Host/Oben) oder 2 (Client/Unten), null = Offline
+
+    const netStatus = document.getElementById('net-status');
+    const btnHost = document.getElementById('btnHost');
+    const btnJoin = document.getElementById('btnJoin');
+
+    const peerConfig = {
         config: {
             'iceServers': [
                 { urls: 'stun:stun.l.google.com:19302' },
                 { urls: 'stun:global.stun.twilio.com:3478' }
             ]
         }
-    });
-    
-    let conn = null;
-    let myRole = null; // 1 (Host/Oben) oder 2 (Client/Unten), null = Offline
+    };
 
-    const netStatus = document.getElementById('net-status');
+    function hideNetworkButtons() {
+        btnHost.style.display = 'none';
+        btnJoin.style.display = 'none';
+    }
 
-    peer.on('open', id => {
-        document.getElementById('my-id').innerText = id;
-    });
+    // Spieler 1 klickt auf "Spiel erstellen"
+    function startHost() {
+        if (peer) peer.destroy();
+        netStatus.innerHTML = "Raum wird geöffnet...";
+        
+        // Host registriert sich mit der festen ID
+        peer = new Peer(SECRET_ROOM_ID, peerConfig);
 
-    peer.on('error', err => {
-        console.error(err);
-        if (err.type === 'unavailable-id') {
-            netStatus.innerHTML = `<b style="color:red">PIN belegt!</b>`;
-        } else if (err.type === 'peer-unavailable') {
-            netStatus.innerHTML = `<b style="color:red">Partner nicht gefunden!</b>`;
-        } else {
-            netStatus.innerHTML = `<b style="color:red">Netzwerkfehler!</b>`;
-        }
-    });
+        peer.on('open', () => {
+            netStatus.innerHTML = "<b style='color:#b97f2e'>Warte auf Mitspieler...</b>";
+            hideNetworkButtons();
+        });
 
-    peer.on('connection', c => {
-        if (conn) return; 
-        conn = c;
-        myRole = 1; // Host ist immer Spieler 1
-        setupConnection();
-    });
+        peer.on('connection', c => {
+            if (conn) return; 
+            conn = c;
+            myRole = 1; // Host = Spieler 1
+            setupConnection();
+        });
 
-    function connectToPeer() {
-        const id = document.getElementById('peer-id-input').value;
-        if (!id) return;
-        netStatus.innerText = "Verbinde...";
-        conn = peer.connect(id);
-        myRole = 2; // Client ist immer Spieler 2
-        setupConnection();
+        peer.on('error', err => {
+            console.error(err);
+            if (err.type === 'unavailable-id') {
+                netStatus.innerHTML = "<b style='color:red'>Es gibt bereits ein Spiel! Klicke auf 'Beitreten'.</b>";
+            } else {
+                netStatus.innerHTML = `<b style="color:red">Netzwerkfehler!</b>`;
+            }
+        });
+    }
+
+    // Spieler 2 klickt auf "Beitreten"
+    function joinGame() {
+        if (peer) peer.destroy();
+        netStatus.innerHTML = "Verbinde...";
+        
+        // Client bekommt eine zufällige ID und verbindet sich zur festen Host-ID
+        peer = new Peer(peerConfig);
+
+        peer.on('open', () => {
+            conn = peer.connect(SECRET_ROOM_ID);
+            myRole = 2; // Client = Spieler 2
+            setupConnection();
+            hideNetworkButtons();
+        });
+
+        peer.on('error', err => {
+            console.error(err);
+            netStatus.innerHTML = "<b style='color:red'>Kein offenes Spiel gefunden! Klicke auf 'Erstellen'.</b>";
+        });
     }
 
     function setupConnection() {
         conn.on('open', () => {
-            netStatus.innerHTML = `<b style='color:green'>Verbunden (Spieler ${myRole})</b>`;
-            resetGame(false); // Reset ohne nochmal übers Netzwerk zu senden
+            netStatus.innerHTML = `<b style='color:green'>Verbunden (Du bist Spieler ${myRole})</b>`;
+            resetGame(false); 
         });
+        
         conn.on('data', data => {
             if (data.type === 'move') applyRemoteMove(data);
             else if (data.type === 'reset') resetGame(false);
         });
+        
         conn.on('close', () => {
-            netStatus.innerHTML = `<b style="color:red">Partner weg.</b>`;
+            netStatus.innerHTML = `<b style="color:red">Mitspieler hat das Spiel verlassen.</b>`;
             myRole = null;
+            btnHost.style.display = 'block';
+            btnJoin.style.display = 'block';
             updateStatusText();
         });
     }
@@ -451,7 +483,7 @@
         const { row, col } = selectedPit; 
         const player = currentPlayer;
 
-        // Zug an Partner senden, falls es ein lokaler Klick war
+        // Zug ans Netzwerk senden
         if (!isRemote && conn && conn.open) {
             conn.send({ type: 'move', row, col, direction });
         }
@@ -474,7 +506,7 @@
     }
 
     async function applyRemoteMove(data) {
-        // Warten, falls lokal noch animiert wird, um Desync zu vermeiden
+        // Wartet, falls lokal noch animiert wird
         while (animationInProgress) {
             await delay(100);
         }
@@ -583,7 +615,7 @@
     function handlePitClick(row, col) {
         if (!gameActive || animationInProgress) return;
 
-        // Sperre, wenn P2P aktiv ist und man nicht an der Reihe ist
+        // Sperre im P2P, falls man nicht an der Reihe ist
         if (myRole && currentPlayer !== myRole) {
             statusDiv.innerText = "⏳ Du bist nicht dran!";
             return; 
@@ -640,7 +672,6 @@
         
         const p1zone = document.getElementById('zoneP1'); const p2zone = document.getElementById('zoneP2');
         
-        // P2P Highlight: Wenn Online, zeige nur den eigenen "aktiven" Bereich kräftig an
         if (currentPlayer === 1) { p1zone.classList.add('active-p1'); p2zone.classList.remove('active-p2'); } 
         else { p2zone.classList.add('active-p2'); p1zone.classList.remove('active-p1'); }
 
@@ -662,7 +693,6 @@
         updateStatusText();
     }
 
-    // Keyboard-Steuerung
     document.addEventListener('keydown', function(event) {
         if (event.key === 'ArrowLeft' && !btnLeft.disabled) {
             btnLeft.click();
@@ -673,7 +703,7 @@
 
     document.getElementById('resetBtn').addEventListener('click', () => resetGame(true));
     
-    // Initialer Start
+    // Initialer Start lokal
     resetGame(false);
 </script>
 </body>
