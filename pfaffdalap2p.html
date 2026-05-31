@@ -121,7 +121,7 @@
             }
             
             #app-container {
-                flex-direction: row; flex-wrap: wrap; 
+                flex-direction: row; flex-wrap: nowrap; /* HIER GEÄNDERT: Sorgt dafür, dass die Elemente in einer Reihe bleiben */
                 align-items: stretch; justify-content: center; 
                 gap: 10px; height: 100%; padding: 10px;
                 padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
