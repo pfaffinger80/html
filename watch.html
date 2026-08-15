@@ -2,12 +2,14 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Clock Made of Clocks</title>
     <style>
         :root {
-            /* Größe einer einzelnen kleinen Uhr */
-            --clock-size: 60px;
+            /* Skaliert die Uhr automatisch: min 15px, bevorzugt 5% der Bildschirmbreite, max 60px */
+            --clock-size: clamp(15px, 5vw, 60px);
+            --gap-size: clamp(3px, 1vw, 12px);
+            --margin-size: clamp(10px, 3vw, 40px);
         }
 
         body {
@@ -15,15 +17,22 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            
+            /* 100dvh zentriert perfekt, auch wenn die iPhone-Adressleiste aufploppt */
+            height: 100dvh; 
+            width: 100vw;
             margin: 0;
             font-family: sans-serif;
             overflow: hidden;
+            
+            /* Verhindert das typische Gummi-Bouncen beim Scrollen auf dem iPhone */
+            overscroll-behavior: none; 
         }
 
         .app {
             display: flex;
-            gap: 12px;
+            gap: var(--gap-size);
+            padding: 10px;
         }
 
         .digit {
@@ -32,10 +41,10 @@
             grid-template-rows: repeat(3, var(--clock-size));
         }
 
-        /* Größerer Abstand zwischen Stunden, Minuten und Sekunden */
+        /* Abstand zwischen Stunden, Minuten und Sekunden */
         .app > .digit:nth-of-type(2),
         .app > .digit:nth-of-type(4) {
-            margin-right: 40px;
+            margin-right: var(--margin-size);
         }
 
         .clock {
@@ -43,31 +52,32 @@
             width: var(--clock-size);
             height: var(--clock-size);
             border-radius: 50%;
-            /* Dezenter Rand, damit das Gitter sichtbar bleibt */
-            border: 2px solid rgba(255, 255, 255, 0.05);
+            /* Dünner Rand, sieht auf großen und kleinen Screens gut aus */
+            border: 1px solid rgba(255, 255, 255, 0.05);
             box-sizing: border-box;
         }
 
-        /* Basis-Styling für Stunden- und Minutenzeiger */
+        /* Dynamische Zeiger, die mit der Uhr mitschrumpfen */
         .clock::before, .clock::after {
             content: '';
             position: absolute;
             top: 50%;
             left: 50%;
-            width: 6px;
-            height: 50%; /* Reicht exakt bis zum Rand für nahtlose Verbindungen */
+            /* Zeigerbreite ist immer 10% der Uhrgröße */
+            width: calc(var(--clock-size) * 0.1);
+            height: 50%;
             background: #ffffff;
-            border-radius: 3px;
+            border-radius: calc(var(--clock-size) * 0.05);
             transform-origin: bottom center;
-            margin-left: -3px;
+            /* Zentrierung, ebenfalls dynamisch berechnet */
+            margin-left: calc(var(--clock-size) * -0.05);
             margin-top: -50%;
-            /* Weiche, mechanisch wirkende Animation */
+            
             transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
             transform: rotate(var(--angle, 225deg));
             box-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
         }
 
-        /* Zuweisung der CSS-Variablen */
         .clock::before {
             --angle: var(--hour-angle, 225deg);
         }
@@ -91,11 +101,6 @@
     </div>
 
     <script>
-        /**
-         * 2x3 Raster-Konfiguration für die Ziffern 0-9.
-         * Jeder Eintrag repräsentiert eine Uhr: [Stundenzeiger-Winkel, Minutenzeiger-Winkel]
-         * 0° = Oben, 90° = Rechts, 180° = Unten, 270° = Links, 225° = Inaktiv (schräg unten links)
-         */
         const numbers = {
             0: [[90, 180], [270, 180], [0, 180], [0, 180], [0, 90], [0, 270]],
             1: [[225, 225], [180, 180], [225, 225], [0, 180], [225, 225], [0, 0]],
@@ -110,9 +115,7 @@
         };
 
         const digits = document.querySelectorAll('.digit');
-        let currentAngles = Array(6).fill(null).map(() => Array(6).fill([225, 225]));
 
-        // Initialisiere die DOM-Elemente für die Uhren
         digits.forEach(digit => {
             for(let i = 0; i < 6; i++) {
                 const clock = document.createElement('div');
@@ -122,7 +125,6 @@
         });
 
         function getShortestRotation(current, target) {
-            // Berechnet den kürzesten Drehwinkel, um unnatürliches Zurückspringen zu verhindern
             const diff = (target - current) % 360;
             const shortest = diff !== diff % 180 ? (diff < 0 ? diff + 360 : diff - 360) : diff;
             return current + shortest;
@@ -144,22 +146,18 @@
                     let targetHour = pattern[clockIndex][0];
                     let targetMinute = pattern[clockIndex][1];
 
-                    // Lese aktuelle Winkel aus (oder nutze 225 als Startwert)
                     let currentHour = parseFloat(clock.style.getPropertyValue('--hour-angle')) || 225;
                     let currentMinute = parseFloat(clock.style.getPropertyValue('--minute-angle')) || 225;
 
-                    // Vermeide wilde 270° -> 0° Rückwärtssprünge durch smarte Berechnung
                     let finalHour = getShortestRotation(currentHour, targetHour);
                     let finalMinute = getShortestRotation(currentMinute, targetMinute);
 
-                    // CSS Variablen updaten
                     clock.style.setProperty('--hour-angle', `${finalHour}deg`);
                     clock.style.setProperty('--minute-angle', `${finalMinute}deg`);
                 });
             });
         }
 
-        // Start und Intervall
         updateTime();
         setInterval(updateTime, 1000);
     </script>
