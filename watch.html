@@ -6,10 +6,10 @@
     <title>Clock Made of Clocks</title>
     <style>
         :root {
-            /* Skaliert die Uhr automatisch: min 15px, bevorzugt 5% der Bildschirmbreite, max 60px */
-            --clock-size: clamp(15px, 5vw, 60px);
-            --gap-size: clamp(3px, 1vw, 12px);
-            --margin-size: clamp(10px, 3vw, 40px);
+            /* Standardgröße für Monitore & Querformat */
+            --clock-size: min(50px, 4vw); 
+            --digit-gap: calc(var(--clock-size) * 0.2);
+            --group-gap: calc(var(--clock-size) * 1.5);
         }
 
         body {
@@ -17,22 +17,38 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            
-            /* 100dvh zentriert perfekt, auch wenn die iPhone-Adressleiste aufploppt */
             height: 100dvh; 
             width: 100vw;
             margin: 0;
-            font-family: sans-serif;
             overflow: hidden;
-            
-            /* Verhindert das typische Gummi-Bouncen beim Scrollen auf dem iPhone */
             overscroll-behavior: none; 
         }
 
         .app {
             display: flex;
-            gap: var(--gap-size);
-            padding: 10px;
+            flex-direction: row; /* Standardmäßig nebeneinander */
+            justify-content: center;
+            align-items: center;
+            gap: var(--group-gap);
+        }
+
+        /* 📱 ZAUBER-TRICK FÜR DAS IPHONE (Hochformat) */
+        @media (max-aspect-ratio: 4/5) {
+            :root {
+                /* Ziffern werden größer, weil sie jetzt gestapelt sind */
+                --clock-size: 13vw; 
+                /* Vertikaler Abstand zwischen den Blöcken */
+                --group-gap: 6vh; 
+            }
+            .app {
+                /* Stapelt die Gruppen (Stunden, Minuten, Sekunden) untereinander */
+                flex-direction: column; 
+            }
+        }
+
+        .time-group {
+            display: flex;
+            gap: var(--digit-gap);
         }
 
         .digit {
@@ -41,63 +57,56 @@
             grid-template-rows: repeat(3, var(--clock-size));
         }
 
-        /* Abstand zwischen Stunden, Minuten und Sekunden */
-        .app > .digit:nth-of-type(2),
-        .app > .digit:nth-of-type(4) {
-            margin-right: var(--margin-size);
-        }
-
         .clock {
             position: relative;
             width: var(--clock-size);
             height: var(--clock-size);
             border-radius: 50%;
-            /* Dünner Rand, sieht auf großen und kleinen Screens gut aus */
             border: 1px solid rgba(255, 255, 255, 0.05);
             box-sizing: border-box;
         }
 
-        /* Dynamische Zeiger, die mit der Uhr mitschrumpfen */
         .clock::before, .clock::after {
             content: '';
             position: absolute;
             top: 50%;
             left: 50%;
-            /* Zeigerbreite ist immer 10% der Uhrgröße */
             width: calc(var(--clock-size) * 0.1);
             height: 50%;
             background: #ffffff;
             border-radius: calc(var(--clock-size) * 0.05);
             transform-origin: bottom center;
-            /* Zentrierung, ebenfalls dynamisch berechnet */
             margin-left: calc(var(--clock-size) * -0.05);
             margin-top: -50%;
-            
             transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
             transform: rotate(var(--angle, 225deg));
             box-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
         }
 
-        .clock::before {
-            --angle: var(--hour-angle, 225deg);
-        }
-        .clock::after {
-            --angle: var(--minute-angle, 225deg);
-        }
+        .clock::before { --angle: var(--hour-angle, 225deg); }
+        .clock::after { --angle: var(--minute-angle, 225deg); }
     </style>
 </head>
 <body>
 
     <div class="app">
-        <!-- Stunden -->
-        <div class="digit" id="h1"></div>
-        <div class="digit" id="h2"></div>
-        <!-- Minuten -->
-        <div class="digit" id="m1"></div>
-        <div class="digit" id="m2"></div>
-        <!-- Sekunden -->
-        <div class="digit" id="s1"></div>
-        <div class="digit" id="s2"></div>
+        <!-- Gruppe 1: Stunden -->
+        <div class="time-group">
+            <div class="digit" id="h1"></div>
+            <div class="digit" id="h2"></div>
+        </div>
+        
+        <!-- Gruppe 2: Minuten -->
+        <div class="time-group">
+            <div class="digit" id="m1"></div>
+            <div class="digit" id="m2"></div>
+        </div>
+        
+        <!-- Gruppe 3: Sekunden -->
+        <div class="time-group">
+            <div class="digit" id="s1"></div>
+            <div class="digit" id="s2"></div>
+        </div>
     </div>
 
     <script>
